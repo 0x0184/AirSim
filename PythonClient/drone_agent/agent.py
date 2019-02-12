@@ -7,6 +7,8 @@ import tempfile
 import pprint
 
 from multiprocessing import Pipe
+import haversine
+import math
 
 class DroneAgent():
     """
@@ -117,12 +119,54 @@ class DroneAgent():
         else:
             if self._leader:
                 pass
+    
+    def collision_avoidance(self, weight=1, gpses=[], boundary=1):
+        """
+        Calculate vector for the rule of collision avoidance
+        weight : the weight for the rule of collision avoidance
+        gpses : the gpses of other drones
+        boundary : the boundary of the flocking group by self
+        """
+        pass
 
-    def flocking_flight(self):
+    def velocity_matching(self, weight=1, gpses=[], boundary=1):
+        """
+        Calculate vector for the rule of velocity matching
+        weight : the weight for the rule of velocity matching
+        gpses : the gpses of other drones
+        boundary : the boundary of the flocking group by self
+        """
+        pass
+
+    def flocking_center(self, weight=1, gpses=[], boundary=1):
+        """
+        Calculate vector for the rule of flocking center
+        weight : the weight for the rule of flocking center
+        gpses : the gpses of other drones
+        boundary : the boundary of the flocking group by self
+        """
+        # get drone's location
+        self._location = self._client.getMultirotorState
+        pass
+
+    def flocking_flight(self, weights, gpses=[], boundary=1):
         """
         Agent command drone to fly by flocking
         """
-        pass
+        if self._UE:
+            if not self._leader:
+                # collect other drone's location
+                self._gps = self._client.getMultirotorState().gps_location
+
+                # check distance is less than boundary
+                distance_check = []
+                
+                for i in range(len(gpses)):
+                    ground_distance = haversine.Haversine((self._gps.longitude, self._gps.latitude), (gpses[i].longitude, gpses[i].latitude))
+                    real_distance = math.sqrt(ground_distance**2 + (self._gps.altitude - gpses[i].altitude)**2)
+                pass 
+        else:
+            pass
 
     def formation_flight(self):
         """
