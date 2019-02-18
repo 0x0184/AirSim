@@ -7,14 +7,14 @@ import tempfile
 import pprint
 
 from multiprocessing import Pipe
-import haversine
 import math
+import localmap
 
 class DroneAgent:
     """
     Agent for Drone
     """
-    def __init__(self, leader=True, input_pipe=[], output_pipe=[], UE=True, droneID='', neighbor_distance=5, neighbor_angle=180):
+    def __init__(self, leader=True, input_pipe=[], output_pipe=[], UE=True, droneID='', neighbor_distance=5, neighbor_angle=180, local_map=localmap.LocalMap()):
         """
         leader: Initialize agent's role
             True: leader
@@ -43,6 +43,7 @@ class DroneAgent:
         self._location = self._client.getMultirotorState().gps_location
         self._linear_velocity = self._client.getMultirotorState().kinematics_estimated.linear_velocity
         self._angular_velocity = self._client.getMultirotorState().kinematics_estimated.angular_velocity
+        self._local_map = local_map
         
     def set_role(self, leader=True):
         """
@@ -145,8 +146,8 @@ class DroneAgent:
         """
         if self._UE:
             if self._leader:
+                # check use moveOnPath
                 for index in range(len(self._global_path_list)):
-                    # check use moveOnPath
                     path = self._global_path_list[index]
                     velocity = self._global_velocity_list[index]
                     self._client.moveToPositionAsync(path[0], path[1], path[2], velocity, vehicle_name=self._droneID).join()
@@ -154,56 +155,68 @@ class DroneAgent:
             if self._leader:
                 pass
     
-    def collision_avoidance(self, weight=1, gpses=[]):
+    def collision_avoidance(self, weight=1, locations=[], distance_check=[]):
         """
         Calculate vector for the rule of collision avoidance
         weight: the weight for the rule of collision avoidance
         gpses: the gpses of other drones
         boundary: the boundary of the flocking group by self
         """
+        vector = {'x_val': 0, 'y_val': 0, 'z_val': 0}
+        center = {'x_val': 0, 'y_val': 0, 'z_val': 0}
+        count = 0
+
+        for i in range(len(locations)):
+            if distance_check[i]:
+                count += 1
+                center['x_val'] += locations[i].x_val
+                center['y_val'] += locations[i].y_val
+                center['z_val'] += locations[i].z_val
+
+        
         pass
 
-    def velocity_matching(self, weight=1, gpses=[]):
+    def velocity_matching(self, weight=1, locations=[], distance_check=[]):
         """
         Calculate vector for the rule of velocity matching
         weight: the weight for the rule of velocity matching
         gpses: the gpses of other drones
         boundary: the boundary of the flocking group by self
         """
+
         pass
 
-    def flocking_center(self, weight=1, gpses=[]):
+    def flocking_center(self, weight=1, locations=[], distance_check=[]):
         """
         Calculate vector for the rule of flocking center
         weight: the weight for the rule of flocking center
         gpses: the gpses of other drones
         boundary: the boundary of the flocking group by self
         """
-        # get drone's location
-        self._location = self._client.getMultirotorState
         pass
 
-    def flocking_flight(self, weights, gpses=[]):
+    def flocking_flight(self, weights, locations=[], velocitys=[]):
         """
         Agent command drone to fly by flocking
+        locations = [(x1, y1, z1), (x2, y2, z2), ...]
         """
         if self._UE:
             if not self._leader:
                 # collect other drone's location
-                self._gps = self._client.getMultirotorState().gps_location
+                self._location = self._client.getMultirotorState().kinematics_estimated.position
+                self._location.z_val *= -1
 
                 # check distance is less than boundary
                 distance_check = []
                 
-                for i in range(len(gpses)):
-                    ground_distance = haversine.Haversine3D((self._gps.latitude, self._gps.longitude, self._gps.altitude), (gpses[i].latitude, gpses[i].longitude, gpses[i].altitude))
-
-                    if ground_distance < self._neighbor_distance:
+                for i in range(len(locations)):
+                    distance_on_map = localmap.distance3D((self._location.x_val, self._location.y_val, self._location.z_val), (locations[i].x_val, locations[i].y_val, locations[i].z_val))
+                    
+                    # check angle also
+                    if distance_on_map < self._neighbor_distance:
                         distance_check.append(True)
                     else:
                         distance_check.append(False)
-                
-
         else:
             pass
 
