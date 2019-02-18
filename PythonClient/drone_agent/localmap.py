@@ -98,8 +98,8 @@ def distance2D(loc2d1=tuple(), loc2d2=tuple()):
 def distance3D(loc3d1=tuple(), loc3d2=tuple()):
     """
     get distance from (x1, y1, z1), (x2, y2, z2)
-    loc2d1 : (x1, y1, z1)
-    loc2d2 : (x2, y2, z2)
+    loc3d1 : (x1, y1, z1)
+    loc3d2 : (x2, y2, z2)
     return : distance
     """
     return math.sqrt((loc3d1[0] - loc3d2[0])**2 + (loc3d1[1] - loc3d2[1])**2 + (loc3d1[2] - loc3d2)**2)
