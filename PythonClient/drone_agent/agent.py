@@ -9,6 +9,7 @@ import pprint
 from multiprocessing import Pipe
 import math
 import localmap
+import vector
 
 class DroneAgent:
     """
@@ -146,7 +147,7 @@ class DroneAgent:
         """
         if self._UE:
             if self._leader:
-                # check use moveOnPath
+                ### check use moveOnPath
                 for index in range(len(self._global_path_list)):
                     path = self._global_path_list[index]
                     velocity = self._global_velocity_list[index]
@@ -155,28 +156,32 @@ class DroneAgent:
             if self._leader:
                 pass
     
-    def collision_avoidance(self, weight=1, locations=[], distance_check=[]):
+    def collision_avoidance(self, weight=1, locations=[], visible=[]):
         """
         Calculate vector for the rule of collision avoidance
         weight: the weight for the rule of collision avoidance
         gpses: the gpses of other drones
         boundary: the boundary of the flocking group by self
         """
-        vector = {'x_val': 0, 'y_val': 0, 'z_val': 0}
-        center = {'x_val': 0, 'y_val': 0, 'z_val': 0}
+        steer = vector.Vector()
+        vec_sum = vector.Vector()
         count = 0
 
         for i in range(len(locations)):
-            if distance_check[i]:
-                count += 1
-                center['x_val'] += locations[i].x_val
-                center['y_val'] += locations[i].y_val
-                center['z_val'] += locations[i].z_val
+            ### check / (distance ** 2) * self._neighbor_distance
+            if visible[i]:
+                distance = localmap.distance3D(loc3d1=(self._location.x_val, self._location.y_val, self._location.z_val), loc3d2=(locations[i].x_val, locations[i].y_val, locations[i].z_val))
+                vec_sum.x_val += self._location.x_val - locations[i].x_val / (distance**2) * self._neighbor_distance
+                vec_sum.y_val += self._location.y_val - locations[i].y_val / (distance**2) * self._neighbor_distance
+                vec_sum.z_val += self._location.z_val - locations[i].z_val / (distance**2) * self._neighbor_distance
 
-        
-        pass
+        steer.x_val = vec_sum.x_val / count * weight
+        steer.y_val = vec_sum.y_val / count * weight
+        steer.z_val = vec_sum.z_val / count * weight
 
-    def velocity_matching(self, weight=1, locations=[], distance_check=[]):
+        return steer
+
+    def velocity_matching(self, weight=1, locations=[], visible=[]):
         """
         Calculate vector for the rule of velocity matching
         weight: the weight for the rule of velocity matching
@@ -186,13 +191,30 @@ class DroneAgent:
 
         pass
 
-    def flocking_center(self, weight=1, locations=[], distance_check=[]):
+    def flocking_center(self, weight=1, locations=[], visible=[]):
         """
         Calculate vector for the rule of flocking center
         weight: the weight for the rule of flocking center
         gpses: the gpses of other drones
         boundary: the boundary of the flocking group by self
         """
+        vector = {'x_val': 0, 'y_val': 0, 'z_val': 0}
+        center = {'x_val': 0, 'y_val': 0, 'z_val': 0}
+        count = 0
+        ### need to change
+        for i in range(len(locations)):
+            if visible[i]:
+                count += 1
+                center['x_val'] += locations[i].x_val
+                center['y_val'] += locations[i].y_val
+                center['z_val'] += locations[i].z_val
+        
+        for i in range(len(center)):
+            center[i] /= count
+        
+        vector['x_val'] = self._location.x_val - center['x_val']
+        vector['y_val'] = self._location.y_val - center['y_val']
+        vector['z_val'] = self._location.z_val - center['z_val']
         pass
 
     def flocking_flight(self, weights, locations=[], velocitys=[]):
@@ -207,16 +229,16 @@ class DroneAgent:
                 self._location.z_val *= -1
 
                 # check distance is less than boundary
-                distance_check = []
+                visible = []
                 
                 for i in range(len(locations)):
                     distance_on_map = localmap.distance3D((self._location.x_val, self._location.y_val, self._location.z_val), (locations[i].x_val, locations[i].y_val, locations[i].z_val))
                     
-                    # check angle also
+                    ### check angle also
                     if distance_on_map < self._neighbor_distance:
-                        distance_check.append(True)
+                        visible.append(True)
                     else:
-                        distance_check.append(False)
+                        visible.append(False)
         else:
             pass
 
