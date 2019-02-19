@@ -1,5 +1,6 @@
 import haversine
 import math
+import vector
 
 class LocalMap:
     """
@@ -102,4 +103,22 @@ def distance3D(loc3d1=tuple(), loc3d2=tuple()):
     loc3d2 : (x2, y2, z2)
     return : distance
     """
-    return math.sqrt((loc3d1[0] - loc3d2[0])**2 + (loc3d1[1] - loc3d2[1])**2 + (loc3d1[2] - loc3d2)**2)
+    return math.sqrt((loc3d1[0] - loc3d2[0])**2 + (loc3d1[1] - loc3d2[1])**2 + (loc3d1[2] - loc3d2[2])**2)
+
+def distance2Dv(loc2d1=vector.Vector(), loc2d2=vector.Vector()):
+    """
+    get distance from (x_val1, y_val1), (x_val2, y_val2)
+    loc2d1 : (x_val1, y_val1)
+    loc2d2 : (x_val2, y_val2)
+    return : distance
+    """
+    return math.sqrt((loc2d1.x_val - loc2d2.x_val)**2 + (loc2d1.y_val - loc2d2.y_val)**2)
+
+def distance3Dv(loc3d1=vector.Vector(), loc3d2=vector.Vector()):
+    """
+    get distance from (x_val1, y_val1, z_val1), (x_val2, y_val2, z_val2)
+    loc3d1 : (x_val1, y_val1, z_val1)
+    loc3d2 : (x_val2, y_val2, z_val2)
+    return : distance
+    """
+    return math.sqrt((loc3d1.x_val - loc3d2.x_val)**2 + (loc3d1.y_val - loc3d2.y_val)**2 + (loc3d1.z_val - loc3d2.z_val)**2)

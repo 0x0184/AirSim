@@ -41,7 +41,6 @@ class DroneAgent:
         self._droneID = droneID
         self._neighbor_distance = neighbor_distance
         self._neighbor_angle = neighbor_angle
-        self._location = self._client.getMultirotorState().gps_location
         self._linear_velocity = self._client.getMultirotorState().kinematics_estimated.linear_velocity
         self._angular_velocity = self._client.getMultirotorState().kinematics_estimated.angular_velocity
         self._local_map = local_map
@@ -168,28 +167,36 @@ class DroneAgent:
         count = 0
 
         for i in range(len(locations)):
-            ### check / (distance ** 2) * self._neighbor_distance
+            ### check / (distance ** 2) other code just / distance
             if visible[i]:
-                distance = localmap.distance3D(loc3d1=(self._location.x_val, self._location.y_val, self._location.z_val), loc3d2=(locations[i].x_val, locations[i].y_val, locations[i].z_val))
-                vec_sum.x_val += self._location.x_val - locations[i].x_val / (distance**2) * self._neighbor_distance
-                vec_sum.y_val += self._location.y_val - locations[i].y_val / (distance**2) * self._neighbor_distance
-                vec_sum.z_val += self._location.z_val - locations[i].z_val / (distance**2) * self._neighbor_distance
+                count += 1
+                distance = localmap.distance3D(loc3d1=self._location, loc3d2=locations[i])
+                vec_sum += self._location - locations[i] / (distance**2)
 
-        steer.x_val = vec_sum.x_val / count * weight
-        steer.y_val = vec_sum.y_val / count * weight
-        steer.z_val = vec_sum.z_val / count * weight
+        vec_sum /= count
+        steer = vec_sum.normalize() * weight
 
         return steer
 
-    def velocity_matching(self, weight=1, locations=[], visible=[]):
+    def velocity_matching(self, weight=1, velocities=[], visible=[]):
         """
         Calculate vector for the rule of velocity matching
         weight: the weight for the rule of velocity matching
         gpses: the gpses of other drones
         boundary: the boundary of the flocking group by self
         """
+        steer = vector.Vector()
+        vel_sum = vector.Vector()
+        
+        for i in range(len(velocities)):
+            if visible[i]:
+                count += 1
+                vel_sum += velocities[i]
 
-        pass
+        vel_sum /= count
+        steer = vel_sum.normalize() * weight
+
+        return steer
 
     def flocking_center(self, weight=1, locations=[], visible=[]):
         """
@@ -198,26 +205,21 @@ class DroneAgent:
         gpses: the gpses of other drones
         boundary: the boundary of the flocking group by self
         """
-        vector = {'x_val': 0, 'y_val': 0, 'z_val': 0}
-        center = {'x_val': 0, 'y_val': 0, 'z_val': 0}
+        steer = vector.Vector()
+        center = vector.Vector()
         count = 0
-        ### need to change
+
         for i in range(len(locations)):
             if visible[i]:
                 count += 1
-                center['x_val'] += locations[i].x_val
-                center['y_val'] += locations[i].y_val
-                center['z_val'] += locations[i].z_val
-        
-        for i in range(len(center)):
-            center[i] /= count
-        
-        vector['x_val'] = self._location.x_val - center['x_val']
-        vector['y_val'] = self._location.y_val - center['y_val']
-        vector['z_val'] = self._location.z_val - center['z_val']
-        pass
+                center += locations[i]
 
-    def flocking_flight(self, weights, locations=[], velocitys=[]):
+        center /= count
+        steer = center.normalize() * weight
+        
+        return steer
+
+    def flocking_flight(self, weights=[], locations=[], velocities=[], max_speed=1):
         """
         Agent command drone to fly by flocking
         locations = [(x1, y1, z1), (x2, y2, z2), ...]
@@ -232,13 +234,18 @@ class DroneAgent:
                 visible = []
                 
                 for i in range(len(locations)):
-                    distance_on_map = localmap.distance3D((self._location.x_val, self._location.y_val, self._location.z_val), (locations[i].x_val, locations[i].y_val, locations[i].z_val))
+                    distance_on_map = localmap.distance3Dv((self._location.x_val, self._location.y_val, self._location.z_val), (locations[i].x_val, locations[i].y_val, locations[i].z_val))
                     
                     ### check angle also
                     if distance_on_map < self._neighbor_distance:
                         visible.append(True)
                     else:
                         visible.append(False)
+
+                col_avo = self.collision_avoidance(weight=weights[0], locations=locations, visible=visible)
+                vel_mat = self.velocity_matching(weight=weights[1], velocities=velocities, visible=visible)
+                flo_cet = self.flocking_center(weight=weights[2], locations=locations, visible=visible)
+                steer = (col_avo + vel_mat + flo_cet) * max_speed
         else:
             pass
 
