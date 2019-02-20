@@ -247,6 +247,10 @@ class DroneAgent:
                 vel_mat = self.velocity_matching(weight=weights[1], velocities=velocities, visible=visible)
                 flo_cet = self.flocking_center(weight=weights[2], locations=locations, visible=visible)
                 steer = (col_avo + vel_mat + flo_cet) * max_speed
+
+                self._duration = 1
+
+                self._client.moveByVelocityAsync(steer.x_val, steer.y_val, steer.z_val, self._duration, vehicle_name=self._droneID)
         else:
             pass
 
