@@ -15,15 +15,14 @@ class DroneAgent:
     """
     Agent for Drone
     """
-    def __init__(self, leader=True, input_pipe=[], output_pipe=[], UE=True, droneID='', neighbor_distance=5, neighbor_angle=180, local_map=localmap.LocalMap()):
+    def __init__(self, leader=True, conns=dict(), UE=True, droneID='', neighbor_distance=5, neighbor_angle=180, local_map=localmap.LocalMap()):
         """
         leader: Initialize agent's role
             True: leader
             False: follower
-        input_pipe: Initialize list of input_pipe for multiprocessing
-            0 index must be ground control
-        output_pipe: Initialize list of output_pipe for multiprocessing
-            0 index must be ground control
+        conns: dictionary of Pipe() to connection with other drone agent
+            It can access by droneID
+            (parent_conn, child_conn)
         UE: Initialize environment is Unreal Engine or ROS
             True: Unreal Engine
             False: ROS
@@ -31,10 +30,10 @@ class DroneAgent:
         droneID: Initialize drone's id
         distance: Initialize agent's flocking neighborhood boundary distance(m)
         angle: Initialize agent's flocking neighborhood boundary angle(0~180)
+        local_map: map of specific gps area
         """
         self._leader = leader
-        self._input_pipe = input_pipe
-        self._output_pipe = output_pipe
+        self._conns = conns
         self._UE = UE
         if self._UE:
             self._client = airsim.MultirotorClient()
@@ -225,7 +224,9 @@ class DroneAgent:
         locations = [(x1, y1, z1), (x2, y2, z2), ...]
         """
         if self._UE:
-            if not self._leader:
+            if self._leader:
+                self.path_fly()
+            else:
                 # collect other drone's location
                 self._location = self._client.getMultirotorState().kinematics_estimated.position
                 self._location.z_val *= -1
@@ -254,3 +255,12 @@ class DroneAgent:
         Agent command drone to fly by formation
         """
         pass
+
+    def run_agent(self):
+        """
+        run drone agent with gcs command
+        conns : dictionary of multiprocessing.Pipe() connections
+            (parent_conn, child_conn)
+        """
+        if self._UE:
+            command = self._conns[self._droneID][1].recv()
