@@ -8,15 +8,14 @@ import pprint
 
 from multiprocessing import Pipe
 import math
-# import localmap
+import localmap
 import vector
 
 class DroneAgent:
     """
     Agent for Drone
     """
-    def __init__(self, leader=True, UE=True, conn=Pipe()[1], droneID='', neighbor_distance=5, neighbor_angle=180)
-    , local_map=localmap.LocalMap()):
+    def __init__(self, leader=True, UE=True, conn=Pipe()[1], droneID='', error=[0, 0, 0], neighbor_distance=5, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], UE=True)):
         """
         leader: Initialize agent's role
             True: leader
@@ -24,8 +23,7 @@ class DroneAgent:
         UE: Initialize environment is Unreal Engine or ROS
             True: Unreal Engine
             False: ROS
-        conn: dictionary of Pipe() to connection with GCS
-        client: Initialize client if environment is Unreal Engine
+        conn: child_conn of Pipe() to connection with GCS
         droneID: Initialize drone's id
         distance: Initialize agent's flocking neighborhood boundary distance(m)
         angle: Initialize agent's flocking neighborhood boundary angle(0~180)
@@ -37,6 +35,7 @@ class DroneAgent:
             self._client = airsim.MultirotorClient()
             self._conn = conn
         self._droneID = droneID
+        self._error = error
         self._neighbor_distance = neighbor_distance
         self._neighbor_angle = neighbor_angle
         self._local_map = local_map
@@ -113,8 +112,8 @@ class DroneAgent:
         Agent command drone to take off
         """
         if self._UE:
-            self._client.enableApiControl(True, self._droneID)
-            self._client.armDisarm(True, self._droneID)
+            self._client.enableApiControl(True, vehicle_name=self._droneID)
+            self._client.armDisarm(True, vehicle_name=self._droneID)
             self._client.takeoffAsync(vehicle_name=self._droneID).join()
 
     def land(self):
@@ -123,7 +122,7 @@ class DroneAgent:
         """
         if self._UE:
             self._client.landAsync(vehicle_name=self._droneID).join()
-            self._client.armDisarm(False, self._droneID)
+            self._client.armDisarm(False, vehicle_name=self._droneID)
             self._client.enableApiControl(False, self._droneID)
 
     def moveToPosition(self, position, velocity):
@@ -166,10 +165,14 @@ class DroneAgent:
             ### check / (distance ** 2) other code just / distance
             if visible[i]:
                 count += 1
-                distance = localmap.distance3D(loc3d1=self._location, loc3d2=locations[i])
-                vec_sum += self._location - locations[i] / (distance**2)
+                distance = localmap.distance3Dv(loc3d1=self._location, loc3d2=locations[i])
+                vec_sum += (self._location - locations[i]) / distance**2
+
+        if count is 0:
+            return steer
 
         vec_sum /= count
+        print(vec_sum)
         steer = vec_sum.normalize() * weight
 
         return steer
@@ -183,11 +186,15 @@ class DroneAgent:
         """
         steer = vector.Vector()
         vel_sum = vector.Vector()
+        count = 0
         
         for i in range(len(velocities)):
             if visible[i]:
                 count += 1
                 vel_sum += velocities[i]
+
+        if count is 0:
+            return steer
 
         vel_sum /= count
         steer = vel_sum.normalize() * weight
@@ -210,6 +217,9 @@ class DroneAgent:
                 count += 1
                 center += locations[i]
 
+        if count is 0:
+            return steer
+
         center /= count
         steer = center.normalize() * weight
         
@@ -222,7 +232,9 @@ class DroneAgent:
         if self._UE:
             # collect drone's location
             self._location = self._client.getMultirotorState().kinematics_estimated.position
-            self._location.z_val *= -1
+            self._location.x_val += self._error[0]
+            self._location.y_val += self._error[1]
+            self._location.z_val += self._error[2]
             self._linear_velocity = self._client.getMultirotorState().kinematics_estimated.linear_velocity
             # self._angular_velocity = self._client.getMultirotorState().kinematics_estimated.angular_velocity
 
@@ -231,10 +243,10 @@ class DroneAgent:
             data = self._conn.recv()
             locations = []
             velocities = []
-            if data[0] is 'broking':
-                for i in range(len(data[1])):
-                    locations.append(data[i]['location'])
-                    velocities.append(data[i]['velocity'])
+            if data[0] == 'broking':
+                for data_dict in data[1]:
+                    locations.append(data_dict['location'])
+                    velocities.append(data_dict['velocity'])
 
             if self._leader:
                 self.path_fly()
@@ -242,8 +254,8 @@ class DroneAgent:
                 # check distance is less than boundary
                 visible = []
                 
-                for i in range(len(locations)):
-                    distance_on_map = localmap.distance3Dv((self._location.x_val, self._location.y_val, self._location.z_val), (locations[i].x_val, locations[i].y_val, locations[i].z_val))
+                for location in locations:
+                    distance_on_map = localmap.distance3Dv(self._location, location)
                     
                     ### check angle also
                     if distance_on_map < self._neighbor_distance and distance_on_map > 0:
@@ -272,27 +284,43 @@ class DroneAgent:
         """
         Collect Agent's data
         """
+        self._location = self._client.getMultirotorState().kinematics_estimated.position
+        self._location.x_val += self._error[0]
+        self._location.y_val += self._error[1]
+        self._location.z_val += self._error[2]
         self._conn.send([self._droneID, self._location])
 
-    def run_agent(self):
-        """
-        run drone agent with gcs command
-        conns : dictionary of multiprocessing.Pipe() connections
-            (parent_conn, child_conn)
-        """
-        while True:
-            if self._UE:
-                command = self._conn[self._droneID].recv()
-                if command[0] is 'set_global_path':
-                    self.set_global_path(global_path_list=command[1], global_velocity_list=command[2])
-                elif command[0] is 'collect_data':
-                    self.collect_data
-                elif command[0] is 'takeoff':
-                    self.takeoff()
-                elif command[0] is 'flocking_flight':
-                    self.flocking_flight(weights=command[1], max_speed=command[2])
-                elif command[0] is 'land':
-                    self.land()
-                elif command[0] is 'end':
-                    break
+def run_agent(conn, leader=True, UE=True, droneID='', error=[0, 0, 0], neighbor_distance=5, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], UE=True)):
+    """
+    run drone agent with gcs command for Unreal Engine with AirSim
+    conn: child_conn of Pipe() to connection with GCS
+    leader: Initialize agent's role
+        True: leader
+        False: follower
+    UE: Initialize environment is Unreal Engine or ROS
+        True: Unreal Engine
+        False: ROS
+    client: Initialize client if environment is Unreal Engine
+    droneID: Initialize drone's id
+    distance: Initialize agent's flocking neighborhood boundary distance(m)
+    angle: Initialize agent's flocking neighborhood boundary angle(0~180)
+    local_map: map of specific gps area
+    """
+    droneAgent = DroneAgent(leader=leader, UE=UE, conn=conn, droneID=droneID, neighbor_distance=neighbor_distance, neighbor_angle=neighbor_angle, local_map=local_map, error=error)
+    while True:
+        if UE:
+            command = conn.recv()
+            print(command)
+            if command[0] == 'set_global_path':
+                droneAgent.set_global_path(global_path_list=command[1], global_velocity_list=command[2])
+            elif command[0] == 'collect_data':
+                droneAgent.collect_data()
+            elif command[0] == 'takeoff':
+                droneAgent.takeoff()
+            elif command[0] == 'flocking_flight':
+                droneAgent.flocking_flight(weights=command[1], max_speed=command[2])
+            elif command[0] == 'land':
+                droneAgent.land()
+            elif command[0] == 'end':
+                break
 

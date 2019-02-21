@@ -13,35 +13,39 @@ class LocalMap:
         Initialize map by GPS data
         coords : [(lat, lon), (lat, lon), ...]
         """
-        if coords is []:
-            """
-            The map is initialized for Korea
-            North : 43˚00'42"(43.011667)    (lat)
-            East : 131˚52'22"(131.872778)   (lon)
-            West : 124˚10'51"(124.180833)   (lon)
-            South : 33˚06'43"(33.111944)    (lat)
-            Center : 38˚00'00"(38)          (lat)
-            Center : 127˚30'00"(127.5)      (lon)
-            """
-            self._min_lat = 33.111944
-            self._max_lat = 43.011667
-            self._min_lon = 124.180833
-            self._max_lon = 131.872778
-            self._center_lat = 38
-            self._center_lon = 127.5
+        self._UE = UE
+        if self._UE:
+            pass
         else:
-            # Initialize for specific area
-            lats = []
-            lons = []
-            for i in range(len(coords)):
-                lats.append(coords[i][0])
-                lons.append(coords[i][1])
-            self._min_lat = min(lats)
-            self._max_lat = max(lats)
-            self._min_lon = min(lons)
-            self._max_lon = max(lons)
-            self._center_lat = (self._min_lat + self._max_lat) / 2
-            self._center_lon = (self._min_lon + self._max_lon) / 2
+            if coords is []:
+                """
+                The map is initialized for Korea
+                North : 43˚00'42"(43.011667)    (lat)
+                East : 131˚52'22"(131.872778)   (lon)
+                West : 124˚10'51"(124.180833)   (lon)
+                South : 33˚06'43"(33.111944)    (lat)
+                Center : 38˚00'00"(38)          (lat)
+                Center : 127˚30'00"(127.5)      (lon)
+                """
+                self._min_lat = 33.111944
+                self._max_lat = 43.011667
+                self._min_lon = 124.180833
+                self._max_lon = 131.872778
+                self._center_lat = 38
+                self._center_lon = 127.5
+            else:
+                # Initialize for specific area
+                lats = []
+                lons = []
+                for i in range(len(coords)):
+                    lats.append(coords[i][0])
+                    lons.append(coords[i][1])
+                self._min_lat = min(lats)
+                self._max_lat = max(lats)
+                self._min_lon = min(lons)
+                self._max_lon = max(lons)
+                self._center_lat = (self._min_lat + self._max_lat) / 2
+                self._center_lon = (self._min_lon + self._max_lon) / 2
 
     def location2D(self, coord):
         """
