@@ -8,24 +8,23 @@ import pprint
 
 from multiprocessing import Pipe
 import math
-import localmap
+# import localmap
 import vector
 
 class DroneAgent:
     """
     Agent for Drone
     """
-    def __init__(self, leader=True, conns=dict(), UE=True, droneID='', neighbor_distance=5, neighbor_angle=180, local_map=localmap.LocalMap()):
+    def __init__(self, leader=True, UE=True, conn=Pipe()[1], droneID='', neighbor_distance=5, neighbor_angle=180)
+    , local_map=localmap.LocalMap()):
         """
         leader: Initialize agent's role
             True: leader
             False: follower
-        conns: dictionary of Pipe() to connection with other drone agent
-            It can access by droneID
-            (parent_conn, child_conn)
         UE: Initialize environment is Unreal Engine or ROS
             True: Unreal Engine
             False: ROS
+        conn: dictionary of Pipe() to connection with GCS
         client: Initialize client if environment is Unreal Engine
         droneID: Initialize drone's id
         distance: Initialize agent's flocking neighborhood boundary distance(m)
@@ -33,15 +32,13 @@ class DroneAgent:
         local_map: map of specific gps area
         """
         self._leader = leader
-        self._conns = conns
         self._UE = UE
         if self._UE:
             self._client = airsim.MultirotorClient()
+            self._conn = conn
         self._droneID = droneID
         self._neighbor_distance = neighbor_distance
         self._neighbor_angle = neighbor_angle
-        self._linear_velocity = self._client.getMultirotorState().kinematics_estimated.linear_velocity
-        self._angular_velocity = self._client.getMultirotorState().kinematics_estimated.angular_velocity
         self._local_map = local_map
         
     def set_role(self, leader=True):
@@ -218,19 +215,30 @@ class DroneAgent:
         
         return steer
 
-    def flocking_flight(self, weights=[], locations=[], velocities=[], max_speed=1):
+    def flocking_flight(self, weights=[1, 1, 1], max_speed=1):
         """
         Agent command drone to fly by flocking
-        locations = [(x1, y1, z1), (x2, y2, z2), ...]
         """
         if self._UE:
+            # collect drone's location
+            self._location = self._client.getMultirotorState().kinematics_estimated.position
+            self._location.z_val *= -1
+            self._linear_velocity = self._client.getMultirotorState().kinematics_estimated.linear_velocity
+            # self._angular_velocity = self._client.getMultirotorState().kinematics_estimated.angular_velocity
+
+            self._conn.send({'location': self._location, 'velocity': self._linear_velocity})
+
+            data = self._conn.recv()
+            locations = []
+            velocities = []
+            if data[0] is 'broking':
+                for i in range(len(data[1])):
+                    locations.append(data[i]['location'])
+                    velocities.append(data[i]['velocity'])
+
             if self._leader:
                 self.path_fly()
             else:
-                # collect other drone's location
-                self._location = self._client.getMultirotorState().kinematics_estimated.position
-                self._location.z_val *= -1
-
                 # check distance is less than boundary
                 visible = []
                 
@@ -238,7 +246,7 @@ class DroneAgent:
                     distance_on_map = localmap.distance3Dv((self._location.x_val, self._location.y_val, self._location.z_val), (locations[i].x_val, locations[i].y_val, locations[i].z_val))
                     
                     ### check angle also
-                    if distance_on_map < self._neighbor_distance:
+                    if distance_on_map < self._neighbor_distance and distance_on_map > 0:
                         visible.append(True)
                     else:
                         visible.append(False)
@@ -260,11 +268,31 @@ class DroneAgent:
         """
         pass
 
+    def collect_data(self):
+        """
+        Collect Agent's data
+        """
+        self._conn.send([self._droneID, self._location])
+
     def run_agent(self):
         """
         run drone agent with gcs command
         conns : dictionary of multiprocessing.Pipe() connections
             (parent_conn, child_conn)
         """
-        if self._UE:
-            command = self._conns[self._droneID][1].recv()
+        while True:
+            if self._UE:
+                command = self._conn[self._droneID].recv()
+                if command[0] is 'set_global_path':
+                    self.set_global_path(global_path_list=command[1], global_velocity_list=command[2])
+                elif command[0] is 'collect_data':
+                    self.collect_data
+                elif command[0] is 'takeoff':
+                    self.takeoff()
+                elif command[0] is 'flocking_flight':
+                    self.flocking_flight(weights=command[1], max_speed=command[2])
+                elif command[0] is 'land':
+                    self.land()
+                elif command[0] is 'end':
+                    break
+
