@@ -84,16 +84,17 @@ class GCS:
 
 if __name__ is '__main__':
     control = GCS(droneIDs=['Drone1', 'Drone2', 'Drone3'], is_leader=[True, False, False], error=[[0, 0, 0], [2, 2, 0], [4, 0, 0]])
+    
     # start
     control.start()
 
     # control test
-    control.send_command('set_global_path', [[[100, 100, -10]], [[5]]])
+    control.send_command('set_global_path', [[[100, 100, -100]], [5]])
     control.send_command('takeoff')
     # time.sleep(100)
     
     datas = control.send_command('collect_data')
-    while datas[0][1].x_val is not 100 or datas[0][1].y_val is not 100 or datas[0][1].z_val is not -10:
+    while datas[0][1].x_val is not 100 or datas[0][1].y_val is not 100 or datas[0][1].z_val is not -100:
         control.send_command('flocking_flight', data=[[1, 1, 1], 5])
         control.broking()
         datas = control.send_command('collect_data')

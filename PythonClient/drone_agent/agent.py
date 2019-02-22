@@ -39,6 +39,8 @@ class DroneAgent:
         self._neighbor_distance = neighbor_distance
         self._neighbor_angle = neighbor_angle
         self._local_map = local_map
+        filename = self._droneID + '_flight.log'
+        self._log = open('C:\\Users\\DsLiner\\AirSim\\PythonClient\\drone_agent\\log\\'+filename, 'w')
         
     def set_role(self, leader=True):
         """
@@ -100,6 +102,12 @@ class DroneAgent:
         else:
             return (None, None)
 
+    def check_path(self):
+        pass
+
+    def check_boundary(self):
+        pass
+
     def check_connection(self):
         """
         Agent check connection with Drone
@@ -145,6 +153,14 @@ class DroneAgent:
                 for index in range(len(self._global_path_list)):
                     path = self._global_path_list[index]
                     velocity = self._global_velocity_list[index]
+
+                    steer = vector.Vector()
+                    steer.x_val = path[0] - self._location.x_val
+                    steer.y_val = path[1] - self._location.y_val
+                    steer.z_val = path[2] - self._location.z_val
+                    steer = steer.normalize() * self._max
+
+                    self._client.move
                     self._client.moveToPositionAsync(path[0], path[1], path[2], velocity, vehicle_name=self._droneID).join()
         else:
             if self._leader:
@@ -155,7 +171,6 @@ class DroneAgent:
         Calculate vector for the rule of collision avoidance
         weight: the weight for the rule of collision avoidance
         gpses: the gpses of other drones
-        boundary: the boundary of the flocking group by self
         """
         steer = vector.Vector()
         vec_sum = vector.Vector()
@@ -172,7 +187,6 @@ class DroneAgent:
             return steer
 
         vec_sum /= count
-        print(vec_sum)
         steer = vec_sum.normalize() * weight
 
         return steer
@@ -182,7 +196,6 @@ class DroneAgent:
         Calculate vector for the rule of velocity matching
         weight: the weight for the rule of velocity matching
         gpses: the gpses of other drones
-        boundary: the boundary of the flocking group by self
         """
         steer = vector.Vector()
         vel_sum = vector.Vector()
@@ -206,7 +219,6 @@ class DroneAgent:
         Calculate vector for the rule of flocking center
         weight: the weight for the rule of flocking center
         gpses: the gpses of other drones
-        boundary: the boundary of the flocking group by self
         """
         steer = vector.Vector()
         center = vector.Vector()
@@ -250,6 +262,11 @@ class DroneAgent:
 
             if self._leader:
                 self.path_fly()
+
+                log_location = vector.Vector() + self._location
+                log_velocity = vector.Vector() + self._linear_velocity
+                self._log.write(log_location.toString()+'\n')
+                self._log.write(log_velocity.toString()+'\n')
             else:
                 # check distance is less than boundary
                 visible = []
@@ -266,11 +283,17 @@ class DroneAgent:
                 col_avo = self.collision_avoidance(weight=weights[0], locations=locations, visible=visible)
                 vel_mat = self.velocity_matching(weight=weights[1], velocities=velocities, visible=visible)
                 flo_cet = self.flocking_center(weight=weights[2], locations=locations, visible=visible)
-                steer = (col_avo + vel_mat + flo_cet) * max_speed
+                steer = (col_avo + vel_mat + flo_cet).normalize() * max_speed
 
                 self._duration = 1
 
                 self._client.moveByVelocityAsync(steer.x_val, steer.y_val, steer.z_val, self._duration, vehicle_name=self._droneID)
+
+                log_location = vector.Vector() + self._location
+                log_velocity = vector.Vector() + self._linear_velocity
+                self._log.write('location: '+log_location.toString()+'\n')
+                self._log.write('velocity: '+log_velocity.toString()+'\n')
+                self._log.write('steer: '+steer.toString()+'\n')
         else:
             pass
 
