@@ -5,7 +5,7 @@ import haversine
 from multiprocessing import Process, Pipe
 import time
 
-class GCS:
+class SITL:
     """
     Ground Control System for Unreal Engine with AirSim
     setting.json must be set like this
@@ -83,7 +83,7 @@ class GCS:
             self._dronePConns[i].send(['broking', data])
 
 if __name__ is '__main__':
-    control = GCS(droneIDs=['Drone1', 'Drone2', 'Drone3'], is_leader=[True, False, False], error=[[0, 0, 0], [2, 2, 0], [4, 0, 0]])
+    control = SITL(droneIDs=['Drone1', 'Drone2', 'Drone3'], is_leader=[True, False, False], error=[[0, 0, 0], [2, 2, 0], [4, 0, 0]])
     
     # start
     control.start()
