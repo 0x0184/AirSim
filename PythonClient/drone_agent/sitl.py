@@ -39,6 +39,7 @@ class SITL:
         self._droneCConns = []
         self._droneIDs = droneIDs
         self._is_leader = is_leader
+        self._leaderID = ''
         self._error = error
         for i in range(len(self._droneIDs)):
             ### need to consider Drone and GCS's pipe connection
@@ -47,11 +48,11 @@ class SITL:
             self._dronePConns.append(parent_conn)
             self._droneCConns.append(child_conn)
 
-
         for i in range(len(self._droneIDs)):
-            proc = Process(target=agent.run_agent, args=(self._droneCConns[i], self._is_leader[i], True, droneIDs[i], self._error[i], ))
+            proc = Process(target=agent.run_agent, args=(self._droneCConns[i], self._is_leader[i], True, droneIDs[i], self._error[i], 2, 25))
             self._processes.append(proc)
-
+            if self._is_leader[i]:
+                self._leaderID = self._droneIDs[i]
 
     def start(self):
         for i in range(len(self._droneIDs)):
@@ -69,9 +70,9 @@ class SITL:
             datas = []
             for i in range(len(self._droneIDs)):
                 data = self._dronePConns[i].recv()
-                print(f'{self._droneIDs[i]} : {data}')
+                # print(f'{self._droneIDs[i]} : {data}')
                 datas.append(data)
-            print()
+            # print()
             return datas
 
     def broking(self):
@@ -82,20 +83,36 @@ class SITL:
         for i in range(len(self._droneIDs)):
             self._dronePConns[i].send(['broking', data])
 
+    def mission_complete(self, datas, path_list, boundary=2):
+        for i in range(len(datas)):
+            if datas[i][0] == self._leaderID:
+                leader_location = datas[i][1]
+                distance = localmap.distance3Dv(loc3d1=leader_location, loc3d2=path_list[-1])
+                print(distance)
+                if distance < boundary:
+                    return True
+        return False
+
 if __name__ is '__main__':
-    control = SITL(droneIDs=['Drone1', 'Drone2', 'Drone3'], is_leader=[True, False, False], error=[[0, 0, 0], [2, 2, 0], [4, 0, 0]])
+    control = SITL(droneIDs=['Drone1', 'Drone2', 'Drone3'], is_leader=[False, True, False], error=[[0, 0, 0], [2, 2, 0], [4, 0, 0]])
     
     # start
     control.start()
 
+    # set path list
+    path_list = [Vector(100, 100, -100)]
+    speed_list = [5]
+    mission_boundary = [1]
+    flocking_boundary = [25]
+
     # control test
-    control.send_command('set_global_path', [[[100, 100, -100]], [5]])
+    control.send_command('set_global_path', [path_list, speed_list])
     control.send_command('takeoff')
     # time.sleep(100)
     
     datas = control.send_command('collect_data')
-    while datas[0][1].x_val is not 100 or datas[0][1].y_val is not 100 or datas[0][1].z_val is not -100:
-        control.send_command('flocking_flight', data=[[1, 1, 1], 5])
+    while not control.mission_complete(datas, path_list, boundary=2):
+        control.send_command('flocking_flight', data=[[1, 1, 1]])
         control.broking()
         datas = control.send_command('collect_data')
 

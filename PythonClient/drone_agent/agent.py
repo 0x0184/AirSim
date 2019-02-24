@@ -10,12 +10,13 @@ from multiprocessing import Pipe
 import math
 import localmap
 import vector
+import haversine
 
 class DroneAgent:
     """
     Agent for Drone
     """
-    def __init__(self, leader=True, UE=True, conn=Pipe()[1], droneID='', error=[0, 0, 0], neighbor_distance=5, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], UE=True)):
+    def __init__(self, leader=True, UE=True, conn=Pipe()[1], droneID='', error=[0, 0, 0], seperation_boundary = 2, neighbor_distance=25, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], UE=True), follower_speed_multiplier=1.5):
         """
         leader: Initialize agent's role
             True: leader
@@ -34,13 +35,17 @@ class DroneAgent:
         if self._UE:
             self._client = airsim.MultirotorClient()
             self._conn = conn
+            self._duration = 2
         self._droneID = droneID
         self._error = error
+        self._seperation_boundary = seperation_boundary
         self._neighbor_distance = neighbor_distance
         self._neighbor_angle = neighbor_angle
         self._local_map = local_map
+        self._follower_speed_multiplier = follower_speed_multiplier
         filename = self._droneID + '_flight.log'
         self._log = open('C:\\Users\\DsLiner\\AirSim\\PythonClient\\drone_agent\\log\\'+filename, 'w')
+        self._velocity = vector.Vector()
         
     def set_role(self, leader=True):
         """
@@ -84,9 +89,9 @@ class DroneAgent:
 
     def set_global_path(self, global_path_list, global_velocity_list):
         """
-        Set leader agent's global path list
+        Set agent's global path list
         """
-        if self._leader:
+        if self._UE:
             self._global_path_list = global_path_list
             self._global_velocity_list = global_velocity_list
             self._path_index = 0
@@ -95,19 +100,31 @@ class DroneAgent:
 
     def get_global_path(self):
         """
-        get leader agent's global path list and path index
+        get agent's global path list and path index
         """
-        if self._leader:
+        if self._UE:
             return (self._global_path_list, self._global_velocity_list, self._path_index)
         else:
             return (None, None)
 
-    def check_path(self):
-        pass
+    def check_path(self, path_boundary=1):
+        """
+        check drone is on which path
+        """
+        if self._UE:
+            if self._leader:
+                if localmap.distance3Dv(loc3d1=self._location, loc3d2=self._global_path_list[self._path_index]) < path_boundary:
+                    self._path_index += 1
 
-    def check_boundary(self):
-        pass
-
+    def check_end(self, path_boundary=1):
+        """
+        check mission is ended
+        """
+        if localmap.distance3Dv(loc3d1=self._location, loc3d2=self._global_path_list[-1]) < path_boundary:
+            return True
+        else:
+            return False
+        
     def check_connection(self):
         """
         Agent check connection with Drone
@@ -124,11 +141,13 @@ class DroneAgent:
             self._client.armDisarm(True, vehicle_name=self._droneID)
             self._client.takeoffAsync(vehicle_name=self._droneID).join()
 
-    def land(self):
+    def land(self, land_speed=1):
         """
         Agent commend drone to land
         """
         if self._UE:
+            # airsim's landAsync command is unstable
+            self._client.moveToPositionAsync(self._location.x_val, self._location.y_val, 0, land_speed, vehicle_name=self._droneID).join()
             self._client.landAsync(vehicle_name=self._droneID).join()
             self._client.armDisarm(False, vehicle_name=self._droneID)
             self._client.enableApiControl(False, self._droneID)
@@ -142,29 +161,6 @@ class DroneAgent:
         if self._UE:
             self._client.moveToPositionAsync(position[0], position[1], position[2], velocity, vehicle_name=self._droneID).join()
             self._client.hoverAsync(vehicle_name=self._droneID).join()
-
-    def path_fly(self):
-        """
-        Agent command drone to fly with global path
-        """
-        if self._UE:
-            if self._leader:
-                ### check use moveOnPath
-                for index in range(len(self._global_path_list)):
-                    path = self._global_path_list[index]
-                    velocity = self._global_velocity_list[index]
-
-                    steer = vector.Vector()
-                    steer.x_val = path[0] - self._location.x_val
-                    steer.y_val = path[1] - self._location.y_val
-                    steer.z_val = path[2] - self._location.z_val
-                    steer = steer.normalize() * self._max
-
-                    self._client.move
-                    self._client.moveToPositionAsync(path[0], path[1], path[2], velocity, vehicle_name=self._droneID).join()
-        else:
-            if self._leader:
-                pass
     
     def collision_avoidance(self, weight=1, locations=[], visible=[]):
         """
@@ -177,42 +173,53 @@ class DroneAgent:
         count = 0
 
         for i in range(len(locations)):
-            ### check / (distance ** 2) other code just / distance
             if visible[i]:
-                count += 1
                 distance = localmap.distance3Dv(loc3d1=self._location, loc3d2=locations[i])
-                vec_sum += (self._location - locations[i]) / distance**2
+                if distance < self._seperation_boundary:
+                    count += 1
+                    difference = vector.Vector() + self._location - locations[i]
+                    vec_sum += difference.normalize() / distance
 
         if count is 0:
             return steer
+        else:
+            steer = vec_sum / count
 
-        vec_sum /= count
-        steer = vec_sum.normalize() * weight
+        return steer.normalize() * weight
 
-        return steer
-
-    def velocity_matching(self, weight=1, velocities=[], visible=[]):
+    def velocity_matching(self, weight=1, velocities=[], visible=[], path_boundary=1, max_speed=5):
         """
         Calculate vector for the rule of velocity matching
+        if leader, then agent fly with global path
         weight: the weight for the rule of velocity matching
         gpses: the gpses of other drones
         """
-        steer = vector.Vector()
-        vel_sum = vector.Vector()
-        count = 0
-        
-        for i in range(len(velocities)):
-            if visible[i]:
-                count += 1
-                vel_sum += velocities[i]
+        if self._leader:
+            ### check use moveOnPath
+            if self.check_end(path_boundary=path_boundary):
+                self._client.hoverAsync().join()
+                return
+            self.check_path(path_boundary=path_boundary)
 
-        if count is 0:
-            return steer
+            steer = vector.Vector()
+            steer = self._global_path_list[self._path_index] - self._location
+        else:
+            steer = vector.Vector()
+            vel_sum = vector.Vector()
+            count = 0
+            
+            for i in range(len(velocities)):
+                if visible[i]:
+                    count += 1
+                    vel_sum += (vector.Vector() + velocities[i])
 
-        vel_sum /= count
-        steer = vel_sum.normalize() * weight
+            if count is 0:
+                return steer
+            else:
+                vel_sum /= count
+                steer = vel_sum.normalize() - (vector.Vector() + self._velocity).normalize()
 
-        return steer
+        return steer.make_steer(max_speed=self._global_velocity_list[self._path_index]) * weight
 
     def flocking_center(self, weight=1, locations=[], visible=[]):
         """
@@ -227,30 +234,29 @@ class DroneAgent:
         for i in range(len(locations)):
             if visible[i]:
                 count += 1
-                center += locations[i]
+                center += (vector.Vector() + locations[i])
 
         if count is 0:
             return steer
-
-        center /= count
-        steer = center.normalize() * weight
+        else:
+            center /= count
+            steer = vector.Vector() + center - self._location
         
-        return steer
+        return steer.normalize() * weight
 
-    def flocking_flight(self, weights=[1, 1, 1], max_speed=1):
+    def flocking_flight(self, weights=[1, 1, 1]):
         """
         Agent command drone to fly by flocking
         """
         if self._UE:
             # collect drone's location
-            self._location = self._client.getMultirotorState().kinematics_estimated.position
+            self._location = self._client.getMultirotorState(vehicle_name=self._droneID).kinematics_estimated.position
             self._location.x_val += self._error[0]
             self._location.y_val += self._error[1]
             self._location.z_val += self._error[2]
-            self._linear_velocity = self._client.getMultirotorState().kinematics_estimated.linear_velocity
             # self._angular_velocity = self._client.getMultirotorState().kinematics_estimated.angular_velocity
 
-            self._conn.send({'location': self._location, 'velocity': self._linear_velocity})
+            self._conn.send({'location': self._location, 'velocity': self._velocity})
 
             data = self._conn.recv()
             locations = []
@@ -260,40 +266,33 @@ class DroneAgent:
                     locations.append(data_dict['location'])
                     velocities.append(data_dict['velocity'])
 
-            if self._leader:
-                self.path_fly()
-
-                log_location = vector.Vector() + self._location
-                log_velocity = vector.Vector() + self._linear_velocity
-                self._log.write(log_location.toString()+'\n')
-                self._log.write(log_velocity.toString()+'\n')
-            else:
-                # check distance is less than boundary
-                visible = []
+            # check distance is less than boundary
+            visible = []
+            
+            for location in locations:
+                distance_on_map = localmap.distance3Dv(self._location, location)
                 
-                for location in locations:
-                    distance_on_map = localmap.distance3Dv(self._location, location)
+                ### check angle also
+                if distance_on_map < self._neighbor_distance and distance_on_map > 0:
+                    visible.append(True)
+                else:
+                    visible.append(False)
                     
-                    ### check angle also
-                    if distance_on_map < self._neighbor_distance and distance_on_map > 0:
-                        visible.append(True)
-                    else:
-                        visible.append(False)
+            col_avo = self.collision_avoidance(weight=weights[0], locations=locations, visible=visible)
+            vel_mat = self.velocity_matching(weight=weights[1], velocities=velocities, visible=visible, path_boundary= 1, max_speed=self._global_velocity_list[self._path_index])
+            flo_cet = self.flocking_center(weight=weights[2], locations=locations, visible=visible)
+            steer = (col_avo + vel_mat + flo_cet)
+            steer.make_steer(max_speed=self._global_velocity_list[self._path_index])
+            self._client.moveByVelocityAsync(steer.x_val, steer.y_val, steer.z_val, self._duration, vehicle_name=self._droneID)
+            self._velocity = steer
 
-                col_avo = self.collision_avoidance(weight=weights[0], locations=locations, visible=visible)
-                vel_mat = self.velocity_matching(weight=weights[1], velocities=velocities, visible=visible)
-                flo_cet = self.flocking_center(weight=weights[2], locations=locations, visible=visible)
-                steer = (col_avo + vel_mat + flo_cet).normalize() * max_speed
-
-                self._duration = 1
-
-                self._client.moveByVelocityAsync(steer.x_val, steer.y_val, steer.z_val, self._duration, vehicle_name=self._droneID)
-
-                log_location = vector.Vector() + self._location
-                log_velocity = vector.Vector() + self._linear_velocity
-                self._log.write('location: '+log_location.toString()+'\n')
-                self._log.write('velocity: '+log_velocity.toString()+'\n')
-                self._log.write('steer: '+steer.toString()+'\n')
+            log_location = vector.Vector() + self._location
+            log_velocity = vector.Vector() + self._velocity
+            self._log.write('col_avo: '+col_avo.toString()+'\n')
+            self._log.write('vel_mat: '+vel_mat.toString()+'\n')
+            self._log.write('flo_cet: '+flo_cet.toString()+'\n')
+            self._log.write('log_location: '+log_location.toString()+'\n')
+            self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
         else:
             pass
 
@@ -313,7 +312,7 @@ class DroneAgent:
         self._location.z_val += self._error[2]
         self._conn.send([self._droneID, self._location])
 
-def run_agent(conn, leader=True, UE=True, droneID='', error=[0, 0, 0], neighbor_distance=5, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], UE=True)):
+def run_agent(conn, leader=True, UE=True, droneID='', error=[0, 0, 0], seperation_boundary=2, neighbor_distance=5, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], UE=True)):
     """
     run drone agent with gcs command for Unreal Engine with AirSim
     conn: child_conn of Pipe() to connection with GCS
@@ -329,11 +328,10 @@ def run_agent(conn, leader=True, UE=True, droneID='', error=[0, 0, 0], neighbor_
     angle: Initialize agent's flocking neighborhood boundary angle(0~180)
     local_map: map of specific gps area
     """
-    droneAgent = DroneAgent(leader=leader, UE=UE, conn=conn, droneID=droneID, neighbor_distance=neighbor_distance, neighbor_angle=neighbor_angle, local_map=local_map, error=error)
+    droneAgent = DroneAgent(leader=leader, UE=UE, conn=conn, droneID=droneID, seperation_boundary=seperation_boundary, neighbor_distance=neighbor_distance, neighbor_angle=neighbor_angle, local_map=local_map, error=error)
     while True:
         if UE:
             command = conn.recv()
-            print(command)
             if command[0] == 'set_global_path':
                 droneAgent.set_global_path(global_path_list=command[1], global_velocity_list=command[2])
             elif command[0] == 'collect_data':
@@ -341,7 +339,7 @@ def run_agent(conn, leader=True, UE=True, droneID='', error=[0, 0, 0], neighbor_
             elif command[0] == 'takeoff':
                 droneAgent.takeoff()
             elif command[0] == 'flocking_flight':
-                droneAgent.flocking_flight(weights=command[1], max_speed=command[2])
+                droneAgent.flocking_flight(weights=command[1])
             elif command[0] == 'land':
                 droneAgent.land()
             elif command[0] == 'end':

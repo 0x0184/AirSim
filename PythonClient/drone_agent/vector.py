@@ -8,7 +8,6 @@ class Vector:
     x_val = 0.0
     y_val = 0.0
     z_val = 0.0
-    minValue = 0.0001
 
     def __init__(self, x_val=0.0, y_val=0.0, z_val=0.0):
         self.x_val = x_val
@@ -16,15 +15,16 @@ class Vector:
         self.z_val = z_val
 
     def __add__(self, second):
+        vec = self.copy()
         if type(second) == int or type(second) == float:
-            self.x_val += second
-            self.y_val += second
-            self.z_val += second
+            vec.x_val += second
+            vec.y_val += second
+            vec.z_val += second
         else:
-            self.x_val += second.x_val
-            self.y_val += second.z_val
-            self.z_val += second.y_val
-        return self
+            vec.x_val += second.x_val
+            vec.y_val += second.y_val
+            vec.z_val += second.z_val
+        return vec
 
     def add(self, second):
         if type(second) == int or type(second) == float:
@@ -33,19 +33,20 @@ class Vector:
             self.z_val += second
         else:
             self.x_val += second.x_val
-            self.y_val += second.z_val
-            self.z_val += second.y_val
+            self.y_val += second.y_val
+            self.z_val += second.z_val
 
     def __sub__(self, second):
+        vec = self.copy()
         if type(second) == int or type(second) == float:
-            self.x_val -= second
-            self.y_val -= second
-            self.z_val -= second
+            vec.x_val -= second
+            vec.y_val -= second
+            vec.z_val -= second
         else:
-            self.x_val -= second.x_val
-            self.y_val -= second.z_val
-            self.z_val -= second.y_val
-        return self
+            vec.x_val -= second.x_val
+            vec.y_val -= second.y_val
+            vec.z_val -= second.z_val
+        return vec
 
     def sub(self, second):
         if type(second) == int or type(second) == float:
@@ -54,19 +55,20 @@ class Vector:
             self.z_val -= second
         else:
             self.x_val -= second.x_val
-            self.y_val -= second.z_val
-            self.z_val -= second.y_val
+            self.y_val -= second.y_val
+            self.z_val -= second.z_val
 
     def __mul__(self, second):
+        vec = self.copy()
         if type(second) == int or type(second) == float:
-            self.x_val *= second
-            self.y_val *= second
-            self.z_val *= second
+            vec.x_val *= second
+            vec.y_val *= second
+            vec.z_val *= second
         else:
-            self.x_val *= second.x_val
-            self.y_val *= second.z_val
-            self.z_val *= second.y_val
-        return self
+            vec.x_val *= second.x_val
+            vec.y_val *= second.y_val
+            vec.z_val *= second.z_val
+        return vec
 
     def mul(self, second):
         if type(second) == int or type(second) == float:
@@ -75,25 +77,20 @@ class Vector:
             self.z_val *= second
         else:
             self.x_val *= second.x_val
-            self.y_val *= second.z_val
-            self.z_val *= second.y_val
+            self.y_val *= second.y_val
+            self.z_val *= second.z_val
 
     def __truediv__(self, second):
+        vec = self.copy()
         if type(second) == int or type(second) == float:
-            self.x_val /= second
-            self.y_val /= second
-            self.z_val /= second
+            vec.x_val /= second
+            vec.y_val /= second
+            vec.z_val /= second
         else:
-            if second.x_val == 0.0:
-                second.x_val += self.minValue
-            if second.y_val == 0.0:
-                second.y_val += self.minValue
-            if second.z_val == 0.0:
-                second.z_val += self.minValue
-            self.x_val /= second.x_val
-            self.y_val /= second.z_val
-            self.z_val /= second.y_val
-        return self
+            vec.x_val /= second.x_val
+            vec.y_val /= second.y_val
+            vec.z_val /= second.z_val
+        return vec
 
     def truediv(self, second):
         if type(second) == int or type(second) == float:
@@ -101,27 +98,49 @@ class Vector:
             self.y_val /= second
             self.z_val /= second
         else:
-            if second.x_val == 0.0:
-                second.x_val += self.minValue
-            if second.y_val == 0.0:
-                second.y_val += self.minValue
-            if second.z_val == 0.0:
-                second.z_val += self.minValue
             self.x_val /= second.x_val
-            self.y_val /= second.z_val
-            self.z_val /= second.y_val
+            self.y_val /= second.y_val
+            self.z_val /= second.z_val
 
     def normalize(self):
         """
         make vector's length goes to 1
         """
         velocity = math.sqrt(self.x_val**2 + self.y_val**2 + self.z_val**2)
+
+        if velocity == 0:
+            return Vector()
         
         self.x_val /= velocity
         self.y_val /= velocity
         self.z_val /= velocity
 
         return self
+
+    def make_steer(self, max_speed=1):
+        """
+        control steer within max speed
+        """
+        velocity = math.sqrt(self.x_val**2 + self.y_val**2 + self.z_val**2)
+
+        if velocity < 1:
+            return self
+        elif velocity < max_speed:
+            self.x_val /= velocity
+            self.y_val /= velocity
+            self.z_val /= velocity
+            return self
+        else:
+            self.x_val = self.x_val / velocity * max_speed
+            self.y_val = self.y_val / velocity * max_speed
+            self.z_val = self.z_val / velocity * max_speed
+            return self
+
+    def copy(self):
+        """
+        copy vector
+        """
+        return Vector(x_val=self.x_val, y_val=self.y_val, z_val=self.z_val)
         
     def __repr__(self):
         from pprint import pformat
