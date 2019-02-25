@@ -122,14 +122,14 @@ class DroneAgent:
         """
         if self._UE:
             if self._leader:
-                if localmap.distance3Dv(loc3d1=self._location, loc3d2=self._global_path_list[self._path_index]) < check_boundary and self._path_index == len(self._global_path_list):
+                if localmap.distance3Dv(loc3d1=self._location, loc3d2=self._global_path_list[self._path_index]) < check_boundary:
                     self._path_index += 1
 
     def check_end2D(self, check_boundary=2):
         """
         check mission is ended
         """
-        if localmap.distance2Dv(loc2d1=self._location, loc2d2=self._global_path_list[-1]) < check_boundary and self._path_index == len(self._global_path_list):
+        if localmap.distance2Dv(loc2d1=self._location, loc2d2=self._global_path_list[-1]) < check_boundary and self._path_index >= len(self._global_path_list):
             return True
         else:
             return False
@@ -138,7 +138,7 @@ class DroneAgent:
         """
         check mission is ended
         """
-        if localmap.distance3Dv(loc3d1=self._location, loc3d2=self._global_path_list[-1]) < check_boundary:
+        if localmap.distance3Dv(loc3d1=self._location, loc3d2=self._global_path_list[-1]) < check_boundary and self._path_index >= len(self._global_path_list):
             return True
         else:
             return False
@@ -190,6 +190,8 @@ class DroneAgent:
         steer = vector.Vector()
         vec_sum = vector.Vector()
         count = 0
+        if self._path_index >= len(self._global_path_list):
+            return vector.Vector()
         if height_control:
             for i in range(len(locations)):
                 if visible[i]:
@@ -231,9 +233,9 @@ class DroneAgent:
         """
         if height_control:
             if self._leader:
+                self.check_path3D(check_boundary=check_boundary)
                 if self.check_end3D(check_boundary=check_boundary):
                     return vector.Vector()
-                self.check_path3D(check_boundary=check_boundary)
 
                 steer = vector.Vector() + self._global_path_list[self._path_index] - self._location
             else:
@@ -254,9 +256,9 @@ class DroneAgent:
             return steer.normalize() * self._global_velocity_list[self._path_index] * weight
         else:
             if self._leader:
+                self.check_path2D(check_boundary=check_boundary)
                 if self.check_end2D(check_boundary=check_boundary):
                     return vector.Vector()
-                self.check_path2D(check_boundary=check_boundary)
 
                 steer = vector.Vector() + self._global_path_list[self._path_index] - self._location
             else:
@@ -286,6 +288,9 @@ class DroneAgent:
         steer = vector.Vector()
         center = vector.Vector()
         count = 0
+        if self._path_index >= len(self._global_path_list):
+            return vector.Vector()
+
         for i in range(len(locations)):
             if visible[i]:
                 count += 1
@@ -332,21 +337,24 @@ class DroneAgent:
                     visible.append(True)
                 else:
                     visible.append(False)
-                    
-            col_avo = self.collision_avoidance(weight=weights[0], locations=locations, visible=visible, height_control=height_control)
-            vel_mat = self.velocity_matching(weight=weights[1], velocities=velocities, visible=visible, check_boundary= check_boundary, max_speed=self._global_velocity_list[self._path_index], height_control=height_control)
-            flo_cet = self.flocking_center(weight=weights[2], locations=locations, visible=visible)
-            steer = (col_avo + vel_mat + flo_cet)
-            self._client.moveByVelocityAsync(steer.x_val, steer.y_val, steer.z_val, self._duration, vehicle_name=self._droneID)
-            self._velocity = steer
 
-            log_location = vector.Vector() + self._location
-            log_velocity = vector.Vector() + self._velocity
-            self._log.write('col_avo: '+col_avo.toString()+'\n')
-            self._log.write('vel_mat: '+vel_mat.toString()+'\n')
-            self._log.write('flo_cet: '+flo_cet.toString()+'\n')
-            self._log.write('log_location: '+log_location.toString()+'\n')
-            self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
+            if self._path_index >= len(self._global_path_list):
+                self._client.hoverAsync(vehicle_name=self._droneID)
+            else:
+                col_avo = self.collision_avoidance(weight=weights[0], locations=locations, visible=visible, height_control=height_control)
+                vel_mat = self.velocity_matching(weight=weights[1], velocities=velocities, visible=visible, check_boundary= check_boundary, max_speed=self._global_velocity_list[self._path_index], height_control=height_control)
+                flo_cet = self.flocking_center(weight=weights[2], locations=locations, visible=visible)
+                steer = (col_avo + vel_mat + flo_cet)
+                self._client.moveByVelocityAsync(steer.x_val, steer.y_val, steer.z_val, self._duration, vehicle_name=self._droneID)
+
+                self._velocity = steer
+                log_location = vector.Vector() + self._location
+                log_velocity = vector.Vector() + self._velocity
+                self._log.write('col_avo: '+col_avo.toString()+'\n')
+                self._log.write('vel_mat: '+vel_mat.toString()+'\n')
+                self._log.write('flo_cet: '+flo_cet.toString()+'\n')
+                self._log.write('log_location: '+log_location.toString()+'\n')
+                self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
         else:
             pass
 

@@ -41,6 +41,7 @@ class SITL:
         self._is_leader = is_leader
         self._leaderID = ''
         self._error = error
+        self._path_index = 0
         for i in range(len(self._droneIDs)):
             ### need to consider Drone and GCS's pipe connection
             ### is 'broadcast' or '1 to 1 data transfer' or 'server and client' method
@@ -83,15 +84,14 @@ class SITL:
         for i in range(len(self._droneIDs)):
             self._dronePConns[i].send(['broking', data])
 
-    def mission_complete(self, datas, path_list, boundary=2):
-        self._path_index = 0
+    def mission_complete(self, datas, path_list, boundary=3):
         for i in range(len(datas)):
             if datas[i][0] == self._leaderID:
                 leader_location = datas[i][1]
                 distance = localmap.distance2Dv(loc2d1=leader_location, loc2d2=path_list[self._path_index])
                 if distance < boundary:
                     self._path_index += 1
-                if self._path_index == len(path_list):
+                if self._path_index >= len(path_list):
                     return True
         return False
 
@@ -102,7 +102,7 @@ if __name__ is '__main__':
     control.start()
 
     # set path list
-    path_list = [Vector(10, 10, -2), Vector(10, -10, -2), Vector(-10, -10, -2), Vector(-10, 10, -2), Vector(10, 10, -2)]
+    path_list = [Vector(10, 10, -2), Vector(10, -10, -2), Vector(-10, -10, -2), Vector(-10, 10, -2), Vector(0, 0, -2)]
     speed_list = [2, 2, 2, 2, 2]
     check_boundary = 2
     mission_boundary = [1]
@@ -114,7 +114,7 @@ if __name__ is '__main__':
     # time.sleep(100)
     
     datas = control.send_command('collect_data')
-    while not control.mission_complete(datas, path_list, boundary=2):
+    while not control.mission_complete(datas, path_list, boundary=3):
         control.send_command('flocking_flight', data=[[1, 1, 1], check_boundary])
         control.broking()
         datas = control.send_command('collect_data')
