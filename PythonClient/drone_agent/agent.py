@@ -122,14 +122,14 @@ class DroneAgent:
         """
         if self._UE:
             if self._leader:
-                if localmap.distance3Dv(loc3d1=self._location, loc3d2=self._global_path_list[self._path_index]) < check_boundary:
+                if localmap.distance3Dv(loc3d1=self._location, loc3d2=self._global_path_list[self._path_index]) < check_boundary and self._path_index == len(self._global_path_list):
                     self._path_index += 1
 
     def check_end2D(self, check_boundary=2):
         """
         check mission is ended
         """
-        if localmap.distance2Dv(loc2d1=self._location, loc2d2=self._global_path_list[-1]) < check_boundary:
+        if localmap.distance2Dv(loc2d1=self._location, loc2d2=self._global_path_list[-1]) < check_boundary and self._path_index == len(self._global_path_list):
             return True
         else:
             return False
@@ -274,7 +274,7 @@ class DroneAgent:
                 else:
                     steer = vel_sum / count
 
-            return steer.normalize2D() * self._global_velocity_list[self._path_index] * weight
+            return steer.normalize() * self._global_velocity_list[self._path_index] * weight
 
     def flocking_center(self, weight=1, locations=[], visible=[]):
         """

@@ -49,7 +49,7 @@ class SITL:
             self._droneCConns.append(child_conn)
 
         for i in range(len(self._droneIDs)):
-            proc = Process(target=agent.run_agent, args=(self._droneCConns[i], self._is_leader[i], True, droneIDs[i], self._error[i], 3, 5))
+            proc = Process(target=agent.run_agent, args=(self._droneCConns[i], self._is_leader[i], True, droneIDs[i], self._error[i], 5, 25))
             self._processes.append(proc)
             if self._is_leader[i]:
                 self._leaderID = self._droneIDs[i]
