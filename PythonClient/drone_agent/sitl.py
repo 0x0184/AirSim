@@ -96,14 +96,14 @@ class SITL:
         return False
 
 if __name__ is '__main__':
-    control = SITL(droneIDs=['Drone1', 'Drone2', 'Drone3', 'Drone4', 'Drone5'], is_leader=[False, True, False, False, False], error=[[0, 0, 0], [2, 2, 0], [4, 0, 0], [2, -2, 0], [2, 0, 0]])
+    control = SITL(droneIDs=['Drone1', 'Drone2', 'Drone3', 'Drone4', 'Drone5', 'Drone6', 'Drone7', 'Drone8', 'Drone9'], is_leader=[True, False, False, False, False, False, False, False, False], error=[[0, 0, 0], [2, 2, 0], [4, 0, 0], [2, -2, 0], [2, 0, 0], [4, -2, 0], [4, 2, 0], [0, -2, 0], [0, 2, 0]])
     
     # start
     control.start()
 
     # set path list
-    path_list = [Vector(10, 10, -2), Vector(10, -10, -2), Vector(-10, -10, -2), Vector(-10, 10, -2), Vector(0, 0, -2)]
-    speed_list = [2, 2, 2, 2, 2]
+    path_list = [Vector(0, 0, -30), Vector(0, 100, -30), Vector(100, 100, -30), Vector(100, 0, -30), Vector(0, 0, -30)]
+    speed_list = [5, 5, 5, 5, 5]
     check_boundary = 2
     mission_boundary = [1]
     flocking_boundary = [25]
