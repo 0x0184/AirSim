@@ -49,7 +49,7 @@ class SITL:
             self._droneCConns.append(child_conn)
 
         for i in range(len(self._droneIDs)):
-            proc = Process(target=agent.run_agent, args=(self._droneCConns[i], self._is_leader[i], True, droneIDs[i], self._error[i], 2, 25))
+            proc = Process(target=agent.run_agent, args=(self._droneCConns[i], self._is_leader[i], True, droneIDs[i], self._error[i], 3, 5))
             self._processes.append(proc)
             if self._is_leader[i]:
                 self._leaderID = self._droneIDs[i]
@@ -84,24 +84,27 @@ class SITL:
             self._dronePConns[i].send(['broking', data])
 
     def mission_complete(self, datas, path_list, boundary=2):
+        self._path_index = 0
         for i in range(len(datas)):
             if datas[i][0] == self._leaderID:
                 leader_location = datas[i][1]
-                distance = localmap.distance3Dv(loc3d1=leader_location, loc3d2=path_list[-1])
-                print(distance)
+                distance = localmap.distance2Dv(loc2d1=leader_location, loc2d2=path_list[self._path_index])
                 if distance < boundary:
+                    self._path_index += 1
+                if self._path_index == len(path_list):
                     return True
         return False
 
 if __name__ is '__main__':
-    control = SITL(droneIDs=['Drone1', 'Drone2', 'Drone3'], is_leader=[False, True, False], error=[[0, 0, 0], [2, 2, 0], [4, 0, 0]])
+    control = SITL(droneIDs=['Drone1', 'Drone2', 'Drone3', 'Drone4', 'Drone5'], is_leader=[False, True, False, False, False], error=[[0, 0, 0], [2, 2, 0], [4, 0, 0], [2, -2, 0], [2, 0, 0]])
     
     # start
     control.start()
 
     # set path list
-    path_list = [Vector(100, 100, -100)]
-    speed_list = [5]
+    path_list = [Vector(10, 10, -2), Vector(10, -10, -2), Vector(-10, -10, -2), Vector(-10, 10, -2), Vector(10, 10, -2)]
+    speed_list = [2, 2, 2, 2, 2]
+    check_boundary = 2
     mission_boundary = [1]
     flocking_boundary = [25]
 
@@ -112,7 +115,7 @@ if __name__ is '__main__':
     
     datas = control.send_command('collect_data')
     while not control.mission_complete(datas, path_list, boundary=2):
-        control.send_command('flocking_flight', data=[[1, 1, 1]])
+        control.send_command('flocking_flight', data=[[1, 1, 1], check_boundary])
         control.broking()
         datas = control.send_command('collect_data')
 

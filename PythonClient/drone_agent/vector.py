@@ -117,6 +117,21 @@ class Vector:
 
         return self
 
+    def normalize2D(self):
+        """
+        make vector's length goes to 1
+        """
+        velocity = math.sqrt(self.x_val**2 + self.y_val**2)
+
+        if velocity == 0:
+            return Vector()
+        
+        self.x_val /= velocity
+        self.y_val /= velocity
+        self.z_val = 0.0
+
+        return self
+
     def make_steer(self, max_speed=1):
         """
         control steer within max speed

@@ -107,20 +107,38 @@ class DroneAgent:
         else:
             return (None, None)
 
-    def check_path(self, path_boundary=1):
+    def check_path2D(self, check_boundary=2):
         """
         check drone is on which path
         """
         if self._UE:
             if self._leader:
-                if localmap.distance3Dv(loc3d1=self._location, loc3d2=self._global_path_list[self._path_index]) < path_boundary:
+                if localmap.distance2Dv(loc2d1=self._location, loc2d2=self._global_path_list[self._path_index]) < check_boundary:
                     self._path_index += 1
 
-    def check_end(self, path_boundary=1):
+    def check_path3D(self, check_boundary=2):
+        """
+        check drone is on which path
+        """
+        if self._UE:
+            if self._leader:
+                if localmap.distance3Dv(loc3d1=self._location, loc3d2=self._global_path_list[self._path_index]) < check_boundary:
+                    self._path_index += 1
+
+    def check_end2D(self, check_boundary=2):
         """
         check mission is ended
         """
-        if localmap.distance3Dv(loc3d1=self._location, loc3d2=self._global_path_list[-1]) < path_boundary:
+        if localmap.distance2Dv(loc2d1=self._location, loc2d2=self._global_path_list[-1]) < check_boundary:
+            return True
+        else:
+            return False
+
+    def check_end3D(self, check_boundary=2):
+        """
+        check mission is ended
+        """
+        if localmap.distance3Dv(loc3d1=self._location, loc3d2=self._global_path_list[-1]) < check_boundary:
             return True
         else:
             return False
@@ -162,8 +180,9 @@ class DroneAgent:
             self._client.moveToPositionAsync(position[0], position[1], position[2], velocity, vehicle_name=self._droneID).join()
             self._client.hoverAsync(vehicle_name=self._droneID).join()
     
-    def collision_avoidance(self, weight=1, locations=[], visible=[]):
+    def collision_avoidance(self, weight=1, locations=[], visible=[], height_control=False):
         """
+        Seperate Rule
         Calculate vector for the rule of collision avoidance
         weight: the weight for the rule of collision avoidance
         gpses: the gpses of other drones
@@ -171,58 +190,95 @@ class DroneAgent:
         steer = vector.Vector()
         vec_sum = vector.Vector()
         count = 0
+        if height_control:
+            for i in range(len(locations)):
+                if visible[i]:
+                    distance = localmap.distance3Dv(loc3d1=self._location, loc3d2=locations[i])
+                    if distance < self._seperation_boundary:
+                        count += 1
+                        difference = vector.Vector() + self._location - locations[i]
+                        vec_sum += difference.normalize() / distance
 
-        for i in range(len(locations)):
-            if visible[i]:
-                distance = localmap.distance3Dv(loc3d1=self._location, loc3d2=locations[i])
-                if distance < self._seperation_boundary:
-                    count += 1
-                    difference = vector.Vector() + self._location - locations[i]
-                    vec_sum += difference.normalize() / distance
+            if count is 0:
+                return steer
+            else:
+                steer = vec_sum / count
 
-        if count is 0:
-            return steer
+            return steer.normalize() * self._global_velocity_list[self._path_index] * weight
         else:
-            steer = vec_sum / count
+            for i in range(len(locations)):
+                if visible[i]:
+                    distance = localmap.distance2Dv(loc2d1=self._location, loc2d2=locations[i])
+                    if distance < self._seperation_boundary:
+                        count += 1
+                        difference = vector.Vector() + self._location - locations[i]
+                        vec_sum += difference.normalize2D() / distance
 
-        return steer.normalize() * weight
+            if count is 0:
+                return steer
+            else:
+                steer = vec_sum / count
 
-    def velocity_matching(self, weight=1, velocities=[], visible=[], path_boundary=1, max_speed=5):
+            return steer.normalize2D() * self._global_velocity_list[self._path_index] * weight
+
+    def velocity_matching(self, weight=1, velocities=[], visible=[], check_boundary=2, max_speed=5, height_control=False):
         """
+        Align Rule
         Calculate vector for the rule of velocity matching
         if leader, then agent fly with global path
         weight: the weight for the rule of velocity matching
         gpses: the gpses of other drones
         """
-        if self._leader:
-            ### check use moveOnPath
-            if self.check_end(path_boundary=path_boundary):
-                self._client.hoverAsync().join()
-                return
-            self.check_path(path_boundary=path_boundary)
+        if height_control:
+            if self._leader:
+                if self.check_end3D(check_boundary=check_boundary):
+                    return vector.Vector()
+                self.check_path3D(check_boundary=check_boundary)
 
-            steer = vector.Vector()
-            steer = self._global_path_list[self._path_index] - self._location
-        else:
-            steer = vector.Vector()
-            vel_sum = vector.Vector()
-            count = 0
-            
-            for i in range(len(velocities)):
-                if visible[i]:
-                    count += 1
-                    vel_sum += (vector.Vector() + velocities[i])
-
-            if count is 0:
-                return steer
+                steer = vector.Vector() + self._global_path_list[self._path_index] - self._location
             else:
-                vel_sum /= count
-                steer = vel_sum.normalize() - (vector.Vector() + self._velocity).normalize()
+                steer = vector.Vector()
+                vel_sum = vector.Vector()
+                count = 0
+                
+                for i in range(len(velocities)):
+                    if visible[i]:
+                        count += 1
+                        vel_sum += (vector.Vector() + velocities[i])
 
-        return steer.make_steer(max_speed=self._global_velocity_list[self._path_index]) * weight
+                if count is 0:
+                    return steer
+                else:
+                    steer = vel_sum / count
+
+            return steer.normalize() * self._global_velocity_list[self._path_index] * weight
+        else:
+            if self._leader:
+                if self.check_end2D(check_boundary=check_boundary):
+                    return vector.Vector()
+                self.check_path2D(check_boundary=check_boundary)
+
+                steer = vector.Vector() + self._global_path_list[self._path_index] - self._location
+            else:
+                steer = vector.Vector()
+                vel_sum = vector.Vector()
+                count = 0
+                
+                for i in range(len(velocities)):
+                    if visible[i]:
+                        count += 1
+                        vel_sum += (vector.Vector() + velocities[i])
+
+                if count is 0:
+                    return steer
+                else:
+                    steer = vel_sum / count
+
+            return steer.normalize2D() * self._global_velocity_list[self._path_index] * weight
 
     def flocking_center(self, weight=1, locations=[], visible=[]):
         """
+        Cohesion Rule
         Calculate vector for the rule of flocking center
         weight: the weight for the rule of flocking center
         gpses: the gpses of other drones
@@ -230,7 +286,6 @@ class DroneAgent:
         steer = vector.Vector()
         center = vector.Vector()
         count = 0
-
         for i in range(len(locations)):
             if visible[i]:
                 count += 1
@@ -242,9 +297,9 @@ class DroneAgent:
             center /= count
             steer = vector.Vector() + center - self._location
         
-        return steer.normalize() * weight
+        return steer.normalize() * self._global_velocity_list[self._path_index] * weight
 
-    def flocking_flight(self, weights=[1, 1, 1]):
+    def flocking_flight(self, weights=[1, 1, 1], check_boundary=2, height_control=False):
         """
         Agent command drone to fly by flocking
         """
@@ -278,11 +333,10 @@ class DroneAgent:
                 else:
                     visible.append(False)
                     
-            col_avo = self.collision_avoidance(weight=weights[0], locations=locations, visible=visible)
-            vel_mat = self.velocity_matching(weight=weights[1], velocities=velocities, visible=visible, path_boundary= 1, max_speed=self._global_velocity_list[self._path_index])
+            col_avo = self.collision_avoidance(weight=weights[0], locations=locations, visible=visible, height_control=height_control)
+            vel_mat = self.velocity_matching(weight=weights[1], velocities=velocities, visible=visible, check_boundary= check_boundary, max_speed=self._global_velocity_list[self._path_index], height_control=height_control)
             flo_cet = self.flocking_center(weight=weights[2], locations=locations, visible=visible)
             steer = (col_avo + vel_mat + flo_cet)
-            steer.make_steer(max_speed=self._global_velocity_list[self._path_index])
             self._client.moveByVelocityAsync(steer.x_val, steer.y_val, steer.z_val, self._duration, vehicle_name=self._droneID)
             self._velocity = steer
 
@@ -339,7 +393,7 @@ def run_agent(conn, leader=True, UE=True, droneID='', error=[0, 0, 0], seperatio
             elif command[0] == 'takeoff':
                 droneAgent.takeoff()
             elif command[0] == 'flocking_flight':
-                droneAgent.flocking_flight(weights=command[1])
+                droneAgent.flocking_flight(weights=command[1], check_boundary=command[2])
             elif command[0] == 'land':
                 droneAgent.land()
             elif command[0] == 'end':

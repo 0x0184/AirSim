@@ -1,0 +1,29 @@
+{
+  "SeeDocsAt": "https://github.com/Microsoft/AirSim/blob/master/docs/settings.md",
+  "SettingsVersion": 1.2,
+  "SimMode": "Multirotor",
+  "ClockSpeed": 1,
+  
+  "Vehicles": {
+    "Drone1": {
+    "VehicleType": "SimpleFlight",
+    "X": 0, "Y": 0, "Z": 0
+    },
+    "Drone2": {
+    "VehicleType": "SimpleFlight",
+    "X": 2, "Y": 2, "Z": 0
+    },
+    "Drone3": {
+    "VehicleType": "SimpleFlight",
+    "X": 4, "Y": 0, "Z": 0
+    },
+    "Drone4": {
+    "VehicleType": "SimpleFlight",
+    "X": 2, "Y": -2, "Z": 0
+    },
+    "Drone5": {
+    "VehicleType": "SimpleFlight",
+    "X": 2, "Y": 0, "Z": 0
+    }
+  }
+}
