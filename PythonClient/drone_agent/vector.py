@@ -132,24 +132,37 @@ class Vector:
 
         return self
 
-    def make_steer(self, max_speed=1):
+    def make_steer(self, max_speed):
         """
         control steer within max speed
         """
-        velocity = math.sqrt(self.x_val**2 + self.y_val**2 + self.z_val**2)
-
-        if velocity < 1:
-            return self
-        elif velocity < max_speed:
-            self.x_val /= velocity
-            self.y_val /= velocity
-            self.z_val /= velocity
+        distance = math.sqrt(self.x_val**2 + self.y_val**2 + self.z_val**2)
+        
+        if distance > max_speed:
+            self.x_val = self.x_val / distance * max_speed
+            self.y_val = self.y_val / distance * max_speed
+            self.z_val = self.z_val / distance * max_speed
             return self
         else:
-            self.x_val = self.x_val / velocity * max_speed
-            self.y_val = self.y_val / velocity * max_speed
-            self.z_val = self.z_val / velocity * max_speed
             return self
+
+    def turn_left(self):
+        steer = self.copy()
+        steer.y_val = math.cos(math.pi/2) * self.y_val - math.sin(math.pi/2) * self.x_val
+        steer.x_val = math.sin(math.pi/2) * self.y_val + math.cos(math.pi/2) * self.x_val
+        return steer
+
+    def turn_right(self):
+        steer = self.copy()
+        steer.y_val = math.cos(-math.pi/2) * self.y_val - math.sin(-math.pi/2) * self.x_val
+        steer.x_val = math.sin(-math.pi/2) * self.y_val + math.cos(-math.pi/2) * self.x_val
+        return steer
+
+    def turn_around(self):
+        steer = self.copy()
+        steer.y_val = math.cos(-math.pi) * self.y_val - math.sin(-math.pi) * self.x_val
+        steer.x_val = math.sin(-math.pi) * self.y_val + math.cos(-math.pi) * self.x_val
+        return steer
 
     def copy(self):
         """
