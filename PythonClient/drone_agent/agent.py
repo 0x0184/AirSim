@@ -183,6 +183,23 @@ class DroneAgent:
         if self._UE:
             self._client.moveToPositionAsync(position[0], position[1], position[2], velocity, vehicle_name=self._droneID).join()
             self._client.hoverAsync(vehicle_name=self._droneID).join()
+
+    def waypoint_flight(self, check_boundary=2):
+        """
+        Agent command drone to fly to specific target position
+        follow global waypoint
+        """
+        self.check_path3D(check_boundary=check_boundary)
+        if self.check_end3D(check_boundary=check_boundary):
+            return vector.Vector()
+
+        steer = vector.Vector() + self._global_path_list[self._path_index] - self._location
+        steer = steer.normalize()
+        steer = steer * self._global_velocity_list[self._path_index]
+        steer = steer - self._velocity
+        steer = steer.make_steer(self._maxforce)
+
+        return steer
     
     def collision_avoidance(self, weight=1, drones=[], visible=[], height_control=True):
         """
@@ -194,8 +211,6 @@ class DroneAgent:
         steer = vector.Vector()
         vec_sum = vector.Vector()
         count = 0
-        if self._path_index >= len(self._global_path_list) or self._leader:
-            return vector.Vector()
         if height_control:
             for i in range(len(drones)):
                 if visible[i]:
@@ -265,7 +280,7 @@ class DroneAgent:
 
         return steer * weight
 
-    def flocking_center(self, weight=1, drones=[], visible=[], check_boundary=2):
+    def flocking_center(self, weight=1, drones=[], visible=[]):
         """
         Cohesion Rule
         Calculate vector for the rule of flocking center
@@ -275,39 +290,24 @@ class DroneAgent:
         steer = vector.Vector()
         center = vector.Vector()
         count = 0
-        if self._path_index >= len(self._global_path_list):
-            return vector.Vector()
 
-        if self._leader:
-            self.check_path3D(check_boundary=check_boundary)
-            if self.check_end3D(check_boundary=check_boundary):
-                return vector.Vector()
+        for i in range(len(drones)):
+            if visible[i]:
+                count += 1
+                center += (vector.Vector() + drones[i]['location'])
 
-            steer = vector.Vector() + self._global_path_list[self._path_index] - self._location
-            steer = steer.normalize()
-            steer = steer * self._global_velocity_list[self._path_index]
-            steer = steer - self._velocity
-            steer = steer.make_steer(self._maxforce)
-
-            return steer * weight
+        if count is 0:
+            return steer
         else:
-            for i in range(len(drones)):
-                if visible[i]:
-                    count += 1
-                    center += (vector.Vector() + drones[i]['location'])
-
-            if count is 0:
-                return steer
-            else:
-                center /= count
-                steer = vector.Vector() + center - self._location
-            
-            steer = steer.normalize()
-            steer = steer * self._maxspeed
-            steer = steer - self._velocity
-            steer.make_steer(self._maxforce)
+            center /= count
+            steer = vector.Vector() + center - self._location
         
-            return steer * weight
+        steer = steer.normalize()
+        steer = steer * self._maxspeed
+        steer = steer - self._velocity
+        steer.make_steer(self._maxforce)
+    
+        return steer * weight
 
     def flocking_flight(self, weights=[1, 1, 1], check_boundary=2, height_control=True):
         """
@@ -345,11 +345,22 @@ class DroneAgent:
 
             if self._path_index >= len(self._global_path_list):
                 self._client.hoverAsync(vehicle_name=self._droneID)
+            elif self._leader:
+                # leader waypoint flight
+                acceleration = self.waypoint_flight(check_boundary=check_boundary)
+                steer = self._velocity + acceleration
+                self._client.moveByVelocityAsync(steer.x_val, steer.y_val, steer.z_val, self._duration, vehicle_name=self._droneID)
+
+                self._velocity = steer
+                log_location = vector.Vector() + self._location
+                log_velocity = vector.Vector() + self._velocity
+                self._log.write('log_location: '+log_location.toString()+'\n')
+                self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
             else:
                 self._maxspeed = self._global_velocity_list[self._path_index] * 2
                 col_avo = self.collision_avoidance(weight=weights[0], drones=data[1], visible=visible, height_control=height_control)
                 vel_mat = self.velocity_matching(weight=weights[1], drones=data[1], visible=visible)
-                flo_cet = self.flocking_center(weight=weights[2], drones=data[1], visible=visible, check_boundary=check_boundary)
+                flo_cet = self.flocking_center(weight=weights[2], drones=data[1], visible=visible)
                 acceleration = (col_avo + vel_mat + flo_cet)
                 steer = self._velocity + acceleration
                 steer.make_steer(self._global_velocity_list[self._path_index])
@@ -366,144 +377,118 @@ class DroneAgent:
         else:
             pass
 
-    def formation_control(self, weight=1, drones=[dict()], check_boundary=2, mode='column', swarm_distance=5):
+    def formation_control(self, weight=1, drones=[dict()], mode='column', swarm_distance=5):
         if mode == 'column':
-            return self.column_formation_control(weight=weight, drones=drones, check_boundary=check_boundary, swarm_distance=swarm_distance)
+            return self.column_formation_control(weight=weight, drones=drones, swarm_distance=swarm_distance)
         elif mode == 'line':
-            return self.line_formation_control(weight=weight, drones=drones, check_boundary=check_boundary, swarm_distance=swarm_distance)
+            return self.line_formation_control(weight=weight, drones=drones, swarm_distance=swarm_distance)
         else:
             return vector.Vector()
 
-    def column_formation_control(self, weight=1, drones=[dict()], check_boundary=2, swarm_distance=3):
-        if self._leader:
-            self.check_path3D(check_boundary=check_boundary)
-            if self.check_end3D(check_boundary=check_boundary):
-                return vector.Vector()
+    def column_formation_control(self, weight=1, drones=[dict()], swarm_distance=3):
+        count = 0
+        left_column = []
+        right_column = []
 
-            steer = vector.Vector() + self._global_path_list[self._path_index] - self._location
-            steer = steer.normalize()
-            steer = steer * self._global_velocity_list[self._path_index]
-            steer = steer - self._velocity
-            steer = steer.make_steer(self._maxforce)
-            
-            return steer * weight
+        for i in range(len(drones)):
+            drones[i]['distance'] = math.inf
+
+        # find leader location & direction & velocity
+        leader_location = vector.Vector()
+        leader_direction = vector.Vector()
+        for drone in drones:
+            if drone['leader']:
+                leader_location += drone['location']
+                leader_direction += self._global_path_list[self._path_index] - leader_location
+        
+        leader_direction.normalize2D()
+
+        # Y = aX + b, a = N/E, N: x_val, E: y_val
+        if leader_direction.y_val == 0:
+            a = math.inf * leader_direction.x_val
         else:
-            count = 0
-            left_column = []
-            right_column = []
+            a = leader_direction.x_val / leader_direction.y_val
+        b = leader_location.x_val - a * leader_location.y_val
 
-            for i in range(len(drones)):
-                drones[i]['distance'] = math.inf
-
-            # find leader location & direction & velocity
-            leader_location = vector.Vector()
-            leader_direction = vector.Vector()
-            for drone in drones:
-                if drone['leader']:
-                    leader_location += drone['location']
-                    leader_direction += self._global_path_list[self._path_index] - leader_location
-            
-            leader_direction.normalize2D()
-
-            # Y = aX + b, a = N/E, N: x_val, E: y_val
-            if leader_direction.y_val == 0:
-                a = math.inf * leader_direction.x_val
-            else:
-                a = leader_direction.x_val / leader_direction.y_val
-            b = leader_location.x_val - a * leader_location.y_val
-
-            # asign left or right
-            for i in range(len(drones)):
-                drones[i]['distance'] = localmap.distance3Dv(loc3d1=drones[i]['location'], loc3d2=leader_location)
-                if not drones[i]['leader']:
-                    if leader_direction.y_val > 0:
-                        if (drones[i]['location'].x_val - a * drones[i]['location'].y_val) >= b:
-                            left_column.append(drones[i])
-                        else:
-                            right_column.append(drones[i])
+        # asign left or right
+        for i in range(len(drones)):
+            drones[i]['distance'] = localmap.distance3Dv(loc3d1=drones[i]['location'], loc3d2=leader_location)
+            if not drones[i]['leader']:
+                if leader_direction.y_val > 0:
+                    if (drones[i]['location'].x_val - a * drones[i]['location'].y_val) >= b:
+                        left_column.append(drones[i])
                     else:
-                        if (drones[i]['location'].x_val - a * drones[i]['location'].y_val) <= b:
-                            left_column.append(drones[i])
-                        else:
-                            right_column.append(drones[i])
+                        right_column.append(drones[i])
+                else:
+                    if (drones[i]['location'].x_val - a * drones[i]['location'].y_val) <= b:
+                        left_column.append(drones[i])
+                    else:
+                        right_column.append(drones[i])
 
-            left_column = self.distance_qsort(left_column)
-            right_column = self.distance_qsort(right_column)
+        left_column = self.distance_qsort(left_column)
+        right_column = self.distance_qsort(right_column)
+        
+        while len(left_column) > len(drones)/2:
+            right_column.insert(0, left_column[0])
+            left_column = left_column[1:]
             
-            while len(left_column) > len(drones)/2:
-                right_column.insert(0, left_column[0])
-                left_column = left_column[1:]
-                
-            while len(right_column) > len(drones)/2:
-                left_column.insert(0, right_column[0])
-                right_column = right_column[1:]
+        while len(right_column) > len(drones)/2:
+            left_column.insert(0, right_column[0])
+            right_column = right_column[1:]
 
 
-            count = 0
-            for i in range(len(left_column)):
-                count += 1
-                if left_column[i]['droneID'] == self._droneID:
-                    distribute = leader_direction.turn_left() * count * swarm_distance
-            count = 0
-            for i in range(len(right_column)):
-                count += 1
-                if right_column[i]['droneID'] == self._droneID:
-                    distribute = leader_direction.turn_right() * count * swarm_distance
+        count = 0
+        for i in range(len(left_column)):
+            count += 1
+            if left_column[i]['droneID'] == self._droneID:
+                distribute = leader_direction.turn_left() * count * swarm_distance
+        count = 0
+        for i in range(len(right_column)):
+            count += 1
+            if right_column[i]['droneID'] == self._droneID:
+                distribute = leader_direction.turn_right() * count * swarm_distance
 
-            steer = distribute + leader_location - self._location
-            steer = steer.normalize()
-            steer = steer * self._maxspeed
-            steer = steer - self._velocity
-            steer = steer.make_steer(self._maxforce)
+        steer = distribute + leader_location - self._location
+        steer = steer.normalize()
+        steer = steer * self._maxspeed
+        steer = steer - self._velocity
+        steer = steer.make_steer(self._maxforce)
 
-            return steer * weight
+        return steer * weight
 
-    def line_formation_control(self, weight=1, drones=[dict()], check_boundary=2, swarm_distance=2):
-        if self._leader:
-            self.check_path3D(check_boundary=check_boundary)
-            if self.check_end3D(check_boundary=check_boundary):
-                return vector.Vector()
+    def line_formation_control(self, weight=1, drones=[dict()], swarm_distance=2):
+        count = 0
 
-            steer = vector.Vector() + self._global_path_list[self._path_index] - self._location
-            steer = steer.normalize()
-            steer = steer * self._global_velocity_list[self._path_index]
-            steer = steer - self._velocity
-            steer = steer.make_steer(self._maxforce)
-            
-            return steer * weight
-        else:
-            count = 0
+        for i in range(len(drones)):
+            drones[i]['distance'] = math.inf
 
-            for i in range(len(drones)):
-                drones[i]['distance'] = math.inf
+        # find leader location & direction & velocity
+        leader_location = vector.Vector()
+        leader_direction = vector.Vector()
+        for drone in drones:
+            if drone['leader']:
+                leader_location += drone['location']
+                leader_direction += self._global_path_list[self._path_index] - leader_location
+        
+        leader_direction.normalize2D()
 
-            # find leader location & direction & velocity
-            leader_location = vector.Vector()
-            leader_direction = vector.Vector()
-            for drone in drones:
-                if drone['leader']:
-                    leader_location += drone['location']
-                    leader_direction += self._global_path_list[self._path_index] - leader_location
-            
-            leader_direction.normalize2D()
+        # asign left or right
+        for i in range(len(drones)):
+            drones[i]['distance'] = localmap.distance3Dv(loc3d1=drones[i]['location'], loc3d2=leader_location)
 
-            # asign left or right
-            for i in range(len(drones)):
-                drones[i]['distance'] = localmap.distance3Dv(loc3d1=drones[i]['location'], loc3d2=leader_location)
+        drones = self.distance_qsort(drones)
 
-            drones = self.distance_qsort(drones)
+        count = 0
+        for i in range(len(drones)):
+            count += 1
+            if drones[i]['droneID'] == self._droneID:
+                distribute = leader_direction.turn_around() * count * swarm_distance
 
-            count = 0
-            for i in range(len(drones)):
-                count += 1
-                if drones[i]['droneID'] == self._droneID:
-                    distribute = leader_direction.turn_around() * count * swarm_distance
-
-            steer = distribute + leader_location - self._location
-            steer = steer.normalize()
-            steer = steer * self._maxspeed
-            steer = steer - self._velocity
-            steer = steer.make_steer(self._maxforce)
+        steer = distribute + leader_location - self._location
+        steer = steer.normalize()
+        steer = steer * self._maxspeed
+        steer = steer - self._velocity
+        steer = steer.make_steer(self._maxforce)
 
         return steer * weight
 
@@ -549,10 +534,21 @@ class DroneAgent:
 
             if self._path_index >= len(self._global_path_list):
                 self._client.hoverAsync(vehicle_name=self._droneID)
+            elif self._leader:
+                # leader waypoint flight
+                acceleration = self.waypoint_flight(check_boundary=check_boundary)
+                steer = self._velocity + acceleration
+                self._client.moveByVelocityAsync(steer.x_val, steer.y_val, steer.z_val, self._duration, vehicle_name=self._droneID)
+
+                self._velocity = steer
+                log_location = vector.Vector() + self._location
+                log_velocity = vector.Vector() + self._velocity
+                self._log.write('log_location: '+log_location.toString()+'\n')
+                self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
             else:
                 col_avo = self.collision_avoidance(weight=weights[0], drones=data[1], visible=visible, height_control=height_control)
                 vel_mat = self.velocity_matching(weight=weights[1], drones=data[1], visible=visible)
-                for_con = self.formation_control(weight=weights[2], drones=data[1], check_boundary=check_boundary, mode=mode)
+                for_con = self.formation_control(weight=weights[2], drones=data[1], mode=mode)
                 acceleration = (col_avo + vel_mat + for_con)
                 steer = self._velocity + acceleration
                 steer.make_steer(self._global_velocity_list[self._path_index])
