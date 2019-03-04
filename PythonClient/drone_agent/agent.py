@@ -247,9 +247,8 @@ class DroneAgent:
         for i in range(len(drones)):
             if visible[i]:
                 if drones[i]['leader']:
-                    self._leader_weight = len(drones)
-                    count += self._leader_weight
-                    vel_sum += (vector.Vector() + drones[i]['velocity'] * self._leader_weight)
+                    count += len(drones) - 1
+                    vel_sum += (vector.Vector() + drones[i]['velocity'] * (len(drones)-1) * self._leader_weight)
                 else:
                     count += 1
                     vel_sum += (vector.Vector() + drones[i]['velocity'])
