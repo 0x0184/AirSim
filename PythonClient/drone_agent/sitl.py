@@ -121,17 +121,17 @@ if __name__ is '__main__':
     datas = control.send_command('collect_data')
     control.send_command('set_global_path', [path_list1, speed_list1])
     while not control.mission_complete(datas, path_list1, boundary=3):
-        control.send_command('flocking_flight', data=[[1.5, 1.5, 1.5], check_boundary])
+        control.send_command('flocking_flight', data=[[1.5, 1, 1.5], check_boundary])
         control.broking()
         datas = control.send_command('collect_data')
     control.send_command('set_global_path', [path_list2, speed_list2])
     while not control.mission_complete(datas, path_list2, boundary=3):
-        control.send_command('formation_flight', data=[[1.5, 1.5, 10], check_boundary, 'column'])
+        control.send_command('formation_flight', data=[[1.5, 1.5, 15], check_boundary, 'column'])
         control.broking()
         datas = control.send_command('collect_data')
     control.send_command('set_global_path', [path_list3, speed_list3])
     while not control.mission_complete(datas, path_list3, boundary=3):
-        control.send_command('formation_flight', data=[[1.5, 1.5, 10], check_boundary, 'line'])
+        control.send_command('formation_flight', data=[[1.5, 1, 15], check_boundary, 'line'])
         control.broking()
         datas = control.send_command('collect_data')
     control.send_command('set_global_path', [path_list4, speed_list4])
