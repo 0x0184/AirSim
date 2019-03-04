@@ -16,7 +16,7 @@ class DroneAgent:
     """
     Agent for Drone
     """
-    def __init__(self, leader=True, UE=True, conn=Pipe()[1], droneID='', error=[0, 0, 0], seperation_boundary = 2, neighbor_distance=25, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], UE=True), follower_speed_multiplier=1.5):
+    def __init__(self, leader=True, UE=True, conn=Pipe()[1], droneID='', error=[0, 0, 0], seperation_boundary = 25.0, neighbor_boundary=50, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], UE=True), follower_speed_multiplier=1.5):
         """
         leader: Initialize agent's role
             True: leader
@@ -39,13 +39,16 @@ class DroneAgent:
         self._droneID = droneID
         self._error = error
         self._seperation_boundary = seperation_boundary
-        self._neighbor_distance = neighbor_distance
+        self._neighbor_boundary = neighbor_boundary
         self._neighbor_angle = neighbor_angle
         self._local_map = local_map
         self._follower_speed_multiplier = follower_speed_multiplier
         filename = self._droneID + '_flight.log'
         self._log = open('C:\\Users\\DsLiner\\AirSim\\PythonClient\\drone_agent\\log\\'+filename, 'w')
         self._velocity = vector.Vector()
+        self._maxspeed = 2
+        self._maxforce = 0.5
+        self._leader_weight = 1
         
     def set_role(self, leader=True):
         """
@@ -63,17 +66,17 @@ class DroneAgent:
         """
         return self._leader
 
-    def set_neighbor_distance(self, neighbor_distance):
+    def set_neighbor_boundary(self, neighbor_boundary):
         """
         Set agent's flocking neighborhood boundary distance(m)
         """
-        self._neighbor_distance = neighbor_distance
+        self._neighbor_boundary = neighbor_boundary
 
-    def get_neighbor_distance(self):
+    def get_neighbor_boundary(self):
         """
         Get agent's flocking neighborhood boundary distance(m)
         """
-        return self._neighbor_distance
+        return self._neighbor_boundary
 
     def set_neighbor_angle(self, neighbor_angle):
         """
@@ -180,7 +183,7 @@ class DroneAgent:
             self._client.moveToPositionAsync(position[0], position[1], position[2], velocity, vehicle_name=self._droneID).join()
             self._client.hoverAsync(vehicle_name=self._droneID).join()
     
-    def collision_avoidance(self, weight=1, locations=[], visible=[], height_control=False):
+    def collision_avoidance(self, weight=1, drones=[], visible=[], height_control=True):
         """
         Seperate Rule
         Calculate vector for the rule of collision avoidance
@@ -190,40 +193,46 @@ class DroneAgent:
         steer = vector.Vector()
         vec_sum = vector.Vector()
         count = 0
-        if self._path_index >= len(self._global_path_list):
+        if self._path_index >= len(self._global_path_list) or self._leader:
             return vector.Vector()
         if height_control:
-            for i in range(len(locations)):
+            for i in range(len(drones)):
                 if visible[i]:
-                    distance = localmap.distance3Dv(loc3d1=self._location, loc3d2=locations[i])
+                    distance = localmap.distance2Dv(loc2d1=self._location, loc2d2=drones[i]['location'])
                     if distance < self._seperation_boundary:
                         count += 1
-                        difference = vector.Vector() + self._location - locations[i]
-                        vec_sum += difference.normalize() / distance
-
-            if count is 0:
-                return steer
-            else:
-                steer = vec_sum / count
-
-            return steer.normalize() * self._global_velocity_list[self._path_index] * weight
-        else:
-            for i in range(len(locations)):
-                if visible[i]:
-                    distance = localmap.distance2Dv(loc2d1=self._location, loc2d2=locations[i])
-                    if distance < self._seperation_boundary:
-                        count += 1
-                        difference = vector.Vector() + self._location - locations[i]
+                        difference = vector.Vector() + self._location - drones[i]['location']
                         vec_sum += difference.normalize2D() / distance
 
             if count is 0:
                 return steer
             else:
                 steer = vec_sum / count
+                steer = steer.normalize2D() * self._maxspeed
+                steer = steer - self._velocity
+                steer = steer.make_steer(self._maxforce)
 
-            return steer.normalize2D() * self._global_velocity_list[self._path_index] * weight
+            return steer * weight
+        else:
+            for i in range(len(drones)):
+                if visible[i]:
+                    distance = localmap.distance3Dv(loc3d1=self._location, loc3d2=drones[i]['location'])
+                    if distance < self._seperation_boundary:
+                        count += 1
+                        difference = vector.Vector() + self._location - drones[i]['location']
+                        vec_sum += difference.normalize() / distance
 
-    def velocity_matching(self, weight=1, velocities=[], visible=[], check_boundary=2):
+            if count is 0:
+                return steer
+            else:
+                steer = vec_sum / count
+                steer = steer.normalize2D() * self._maxspeed
+                steer = steer - self._velocity
+                steer = steer.make_steer(self._maxforce)
+
+            return steer * weight
+
+    def velocity_matching(self, weight=1, drones=[], visible=[], check_boundary=2):
         """
         Align Rule
         Calculate vector for the rule of velocity matching
@@ -236,26 +245,40 @@ class DroneAgent:
                 return vector.Vector()
 
             steer = vector.Vector() + self._global_path_list[self._path_index] - self._location
+            steer = steer.normalize()
+            steer = steer * self._global_velocity_list[self._path_index]
+            steer = steer - self._velocity
+            steer = steer.make_steer(self._maxforce)
 
-            return steer.make_steer(max_speed=self._global_velocity_list[self._path_index]) * weight
+            return steer * weight
         else:
             steer = vector.Vector()
             vel_sum = vector.Vector()
             count = 0
             
-            for i in range(len(velocities)):
+            for i in range(len(drones)):
                 if visible[i]:
-                    count += 1
-                    vel_sum += (vector.Vector() + velocities[i])
+                    if drones[i]['leader']:
+                        self._leader_weight = len(drones)
+                        count += self._leader_weight
+                        vel_sum += (vector.Vector() + drones[i]['velocity'] * self._leader_weight)
+                    else:
+                        count += 1
+                        vel_sum += (vector.Vector() + drones[i]['velocity'])
 
             if count is 0:
                 return steer
             else:
                 steer = vel_sum / count
 
-            return steer.normalize() * self._global_velocity_list[self._path_index] * weight
+            steer = steer.normalize()
+            steer = steer * self._maxspeed
+            steer = steer - self._velocity
+            steer = steer.make_steer(self._maxforce)
 
-    def flocking_center(self, weight=1, locations=[], visible=[]):
+            return steer * weight
+
+    def flocking_center(self, weight=1, drones=[], visible=[]):
         """
         Cohesion Rule
         Calculate vector for the rule of flocking center
@@ -265,13 +288,13 @@ class DroneAgent:
         steer = vector.Vector()
         center = vector.Vector()
         count = 0
-        if self._path_index >= len(self._global_path_list):
+        if self._path_index >= len(self._global_path_list) or self._leader:
             return vector.Vector()
 
-        for i in range(len(locations)):
+        for i in range(len(drones)):
             if visible[i]:
                 count += 1
-                center += (vector.Vector() + locations[i])
+                center += (vector.Vector() + drones[i]['location'])
 
         if count is 0:
             return steer
@@ -279,9 +302,14 @@ class DroneAgent:
             center /= count
             steer = vector.Vector() + center - self._location
         
-        return steer.normalize() * self._global_velocity_list[self._path_index] * weight
+        steer = steer.normalize()
+        steer = steer * self._maxspeed
+        steer = steer - self._velocity
+        steer.make_steer(self._maxforce)
+    
+        return steer * weight
 
-    def flocking_flight(self, weights=[1, 1, 1], check_boundary=2, height_control=False):
+    def flocking_flight(self, weights=[1, 1, 1], check_boundary=2, height_control=True):
         """
         Agent command drone to fly by flocking
         """
@@ -293,7 +321,7 @@ class DroneAgent:
             self._location.z_val += self._error[2]
             # self._angular_velocity = self._client.getMultirotorState().kinematics_estimated.angular_velocity
 
-            self._conn.send({'location': self._location, 'velocity': self._velocity})
+            self._conn.send({'droneID': self._droneID, 'leader': self._leader, 'location': self._location, 'velocity': self._velocity})
 
             data = self._conn.recv()
             locations = []
@@ -307,10 +335,10 @@ class DroneAgent:
             visible = []
             
             for location in locations:
-                distance_on_map = localmap.distance3Dv(self._location, location)
+                distance = localmap.distance3Dv(self._location, location)
                 
                 ### check angle also
-                if distance_on_map < self._neighbor_distance and distance_on_map > 0:
+                if distance < self._neighbor_boundary and distance > 0:
                     visible.append(True)
                 else:
                     visible.append(False)
@@ -318,10 +346,13 @@ class DroneAgent:
             if self._path_index >= len(self._global_path_list):
                 self._client.hoverAsync(vehicle_name=self._droneID)
             else:
-                col_avo = self.collision_avoidance(weight=weights[0], locations=locations, visible=visible, height_control=height_control)
-                vel_mat = self.velocity_matching(weight=weights[1], velocities=velocities, visible=visible, check_boundary= check_boundary)
-                flo_cet = self.flocking_center(weight=weights[2], locations=locations, visible=visible)
-                steer = (col_avo + vel_mat + flo_cet)
+                self._maxspeed = self._global_velocity_list[self._path_index] * 2
+                col_avo = self.collision_avoidance(weight=weights[0], drones=data[1], visible=visible, height_control=height_control)
+                vel_mat = self.velocity_matching(weight=weights[1], drones=data[1], visible=visible, check_boundary= check_boundary)
+                flo_cet = self.flocking_center(weight=weights[2], drones=data[1], visible=visible)
+                acceleration = (col_avo + vel_mat + flo_cet)
+                steer = self._velocity + acceleration
+                steer.make_steer(self._global_velocity_list[self._path_index])
                 self._client.moveByVelocityAsync(steer.x_val, steer.y_val, steer.z_val, self._duration, vehicle_name=self._droneID)
 
                 self._velocity = steer
@@ -350,10 +381,13 @@ class DroneAgent:
                 return vector.Vector()
 
             steer = vector.Vector() + self._global_path_list[self._path_index] - self._location
+            steer = steer.normalize()
+            steer = steer * self._global_velocity_list[self._path_index]
+            steer = steer - self._velocity
+            steer = steer.make_steer(self._maxforce)
             
-            return steer.make_steer(max_speed=self._global_velocity_list[self._path_index]) * weight
+            return steer * weight
         else:
-            steer = vector.Vector()
             count = 0
             left_column = []
             right_column = []
@@ -368,7 +402,6 @@ class DroneAgent:
                 if drone['leader']:
                     leader_location += drone['location']
                     leader_direction += self._global_path_list[self._path_index] - leader_location
-                    steer += drone['velocity']
             
             leader_direction.normalize2D()
 
@@ -417,7 +450,11 @@ class DroneAgent:
                 if right_column[i]['droneID'] == self._droneID:
                     distribute = leader_direction.turn_right() * count * swarm_distance
 
-            steer = steer + (distribute + leader_location - self._location).make_steer(self._global_velocity_list[self._path_index] * 1.5)
+            steer = distribute + leader_location - self._location
+            steer = steer.normalize()
+            steer = steer * self._maxspeed
+            steer = steer - self._velocity
+            steer = steer.make_steer(self._maxforce)
 
             return steer * weight
 
@@ -428,10 +465,13 @@ class DroneAgent:
                 return vector.Vector()
 
             steer = vector.Vector() + self._global_path_list[self._path_index] - self._location
+            steer = steer.normalize()
+            steer = steer * self._global_velocity_list[self._path_index]
+            steer = steer - self._velocity
+            steer = steer.make_steer(self._maxforce)
             
-            return steer.make_steer(max_speed=self._global_velocity_list[self._path_index]) * weight
+            return steer * weight
         else:
-            steer = vector.Vector()
             count = 0
 
             for i in range(len(drones)):
@@ -444,7 +484,6 @@ class DroneAgent:
                 if drone['leader']:
                     leader_location += drone['location']
                     leader_direction += self._global_path_list[self._path_index] - leader_location
-                    steer += drone['velocity']
             
             leader_direction.normalize2D()
 
@@ -460,11 +499,15 @@ class DroneAgent:
                 if drones[i]['droneID'] == self._droneID:
                     distribute = leader_direction.turn_around() * count * swarm_distance
 
-            steer = steer + (distribute + leader_location - self._location).make_steer(self._global_velocity_list[self._path_index] * 1.5)
+            steer = distribute + leader_location - self._location
+            steer = steer.normalize()
+            steer = steer * self._maxspeed
+            steer = steer - self._velocity
+            steer = steer.make_steer(self._maxforce)
 
         return steer * weight
 
-    def formation_flight(self, weights=[1, 1, 1], check_boundary=2, height_control=False, mode='column'):
+    def formation_flight(self, weights=[1, 1, 1], check_boundary=2, height_control=True, mode='column'):
         """
         Agent command drone to fly by formation
         weights: for flocking algorithm [seperate, align, cohesion]
@@ -496,10 +539,10 @@ class DroneAgent:
             visible = []
             
             for location in locations:
-                distance_on_map = localmap.distance3Dv(self._location, location)
+                distance = localmap.distance3Dv(self._location, location)
                 
                 ### check angle also
-                if distance_on_map < self._neighbor_distance and distance_on_map > 0:
+                if distance < self._neighbor_boundary and distance > 0:
                     visible.append(True)
                 else:
                     visible.append(False)
@@ -507,10 +550,12 @@ class DroneAgent:
             if self._path_index >= len(self._global_path_list):
                 self._client.hoverAsync(vehicle_name=self._droneID)
             else:
-                col_avo = self.collision_avoidance(weight=weights[0], locations=locations, visible=visible, height_control=height_control)
-                vel_mat = self.formation_control(weight=weights[1], drones=data[1], check_boundary=2, mode=mode)
-                steer = (col_avo + vel_mat)
-                # steer = vel_mat
+                col_avo = self.collision_avoidance(weight=weights[0], drones=data[1], visible=visible, height_control=height_control)
+                vel_mat = self.velocity_matching(weight=weights[1], drones=data[1], visible=visible, check_boundary= check_boundary)
+                for_con = self.formation_control(weight=weights[2], drones=data[1], check_boundary=2, mode=mode)
+                acceleration = (col_avo + vel_mat + for_con)
+                steer = self._velocity + acceleration
+                steer.make_steer(self._global_velocity_list[self._path_index])
                 self._client.moveByVelocityAsync(steer.x_val, steer.y_val, steer.z_val, self._duration, vehicle_name=self._droneID)
 
                 self._velocity = steer
@@ -542,7 +587,7 @@ class DroneAgent:
             greater = self.distance_qsort([x for x in inlist[1:] if x['distance'] >= pivot['distance']])
             return lesser + [pivot] + greater
 
-def run_agent(conn, leader=True, UE=True, droneID='', error=[0, 0, 0], seperation_boundary=2, neighbor_distance=5, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], UE=True)):
+def run_agent(conn, leader=True, UE=True, droneID='', error=[0, 0, 0], seperation_boundary=2, neighbor_boundary=5, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], UE=True)):
     """
     run drone agent with gcs command for Unreal Engine with AirSim
     conn: child_conn of Pipe() to connection with GCS
@@ -558,7 +603,7 @@ def run_agent(conn, leader=True, UE=True, droneID='', error=[0, 0, 0], seperatio
     angle: Initialize agent's flocking neighborhood boundary angle(0~180)
     local_map: map of specific gps area
     """
-    droneAgent = DroneAgent(leader=leader, UE=UE, conn=conn, droneID=droneID, seperation_boundary=seperation_boundary, neighbor_distance=neighbor_distance, neighbor_angle=neighbor_angle, local_map=local_map, error=error)
+    droneAgent = DroneAgent(leader=leader, UE=UE, conn=conn, droneID=droneID, seperation_boundary=seperation_boundary, neighbor_boundary=neighbor_boundary, neighbor_angle=neighbor_angle, local_map=local_map, error=error)
     while True:
         if UE:
             command = conn.recv()

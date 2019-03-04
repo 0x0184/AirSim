@@ -50,7 +50,7 @@ class SITL:
             self._droneCConns.append(child_conn)
 
         for i in range(len(self._droneIDs)):
-            proc = Process(target=agent.run_agent, args=(self._droneCConns[i], self._is_leader[i], True, droneIDs[i], self._error[i], 5, 25))
+            proc = Process(target=agent.run_agent, args=(self._droneCConns[i], self._is_leader[i], True, droneIDs[i], self._error[i], 25, 50))
             self._processes.append(proc)
             if self._is_leader[i]:
                 self._leaderID = self._droneIDs[i]
@@ -104,40 +104,39 @@ if __name__ is '__main__':
 
     # set path list
     path_list1 = [Vector(0, 100, -15), Vector(0, 200, -30), Vector(0, 300, -30)]
-    speed_list1 = [5, 5, 5]
+    speed_list1 = [10, 10, 10]
     path_list2 = [Vector(300, 300, -30)]
-    speed_list2 = [5]
+    speed_list2 = [10]
     path_list3 = [Vector(300, 0, -30)]
-    speed_list3 = [5]
-    path_list4 = [Vector(200, 0, -30), Vector(100, 0, -15)]
-    speed_list4 = [5, 5]
+    speed_list3 = [10]
+    path_list4 = [Vector(200, 0, -30), Vector(100, 0, -30), Vector(0, 0, -30)]
+    speed_list4 = [10, 10, 10]
     check_boundary = 2
     mission_boundary = [1]
     flocking_boundary = [25]
 
     # control test
-    control.send_command('set_global_path', [path_list1, speed_list1])
     control.send_command('takeoff')
-    # time.sleep(100)
     
     datas = control.send_command('collect_data')
+    control.send_command('set_global_path', [path_list1, speed_list1])
     while not control.mission_complete(datas, path_list1, boundary=3):
-        control.send_command('flocking_flight', data=[[1, 1, 1], check_boundary])
+        control.send_command('flocking_flight', data=[[1.5, 1.5, 1.5], check_boundary])
         control.broking()
         datas = control.send_command('collect_data')
     control.send_command('set_global_path', [path_list2, speed_list2])
     while not control.mission_complete(datas, path_list2, boundary=3):
-        control.send_command('formation_flight', data=[[0.2, 1, 1], check_boundary, 'column'])
+        control.send_command('formation_flight', data=[[1.5, 1.5, 10], check_boundary, 'column'])
         control.broking()
         datas = control.send_command('collect_data')
     control.send_command('set_global_path', [path_list3, speed_list3])
     while not control.mission_complete(datas, path_list3, boundary=3):
-        control.send_command('formation_flight', data=[[0.2, 1, 1], check_boundary, 'line'])
+        control.send_command('formation_flight', data=[[1.5, 1.5, 10], check_boundary, 'line'])
         control.broking()
         datas = control.send_command('collect_data')
     control.send_command('set_global_path', [path_list4, speed_list4])
     while not control.mission_complete(datas, path_list4, boundary=3):
-        control.send_command('flocking_flight', data=[[1, 1, 1], check_boundary])
+        control.send_command('flocking_flight', data=[[1.5, 1.5, 1.5], check_boundary])
         control.broking()
         datas = control.send_command('collect_data')
 

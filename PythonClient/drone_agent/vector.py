@@ -134,7 +134,7 @@ class Vector:
 
     def make_steer(self, max_speed):
         """
-        control steer within max speed
+        control steer within max speed like limit
         """
         distance = math.sqrt(self.x_val**2 + self.y_val**2 + self.z_val**2)
         
