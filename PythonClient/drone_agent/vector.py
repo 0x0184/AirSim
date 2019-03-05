@@ -102,11 +102,17 @@ class Vector:
             self.y_val /= second.y_val
             self.z_val /= second.z_val
 
+    def size(self):
+        return math.sqrt(self.x_val**2 + self.y_val**2 + self.z_val**2)
+
+    def size2D(self):
+        return math.sqrt(self.x_val**2 + self.y_val**2)
+
     def normalize(self):
         """
         make vector's length goes to 1
         """
-        velocity = math.sqrt(self.x_val**2 + self.y_val**2 + self.z_val**2)
+        velocity = self.size()
 
         if velocity == 0:
             return Vector()
@@ -121,7 +127,7 @@ class Vector:
         """
         make vector's length goes to 1
         """
-        velocity = math.sqrt(self.x_val**2 + self.y_val**2)
+        velocity = self.size2D()
 
         if velocity == 0:
             return Vector()
@@ -136,7 +142,7 @@ class Vector:
         """
         control steer within max speed like limit
         """
-        distance = math.sqrt(self.x_val**2 + self.y_val**2 + self.z_val**2)
+        distance = self.size()
         
         if distance > max_speed:
             self.x_val = self.x_val / distance * max_speed
