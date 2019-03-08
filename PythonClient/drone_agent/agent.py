@@ -12,6 +12,8 @@ import localmap
 import vector
 import haversine
 
+import socket
+
 class DroneAgent:
     """
     Agent for Drone
@@ -36,6 +38,11 @@ class DroneAgent:
             self._client = airsim.MultirotorClient()
             self._conn = conn
             self._duration = 2
+        else:
+            self._host = '127.0.0.1'
+            self._port = 10000
+            self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            
         self._droneID = droneID
         self._error = error
         self._seperation_boundary = seperation_boundary
@@ -602,6 +609,13 @@ class DroneAgent:
             lesser = self.distance_qsort([x for x in inlist[1:] if x['distance'] < pivot['distance']])
             greater = self.distance_qsort([x for x in inlist[1:] if x['distance'] >= pivot['distance']])
             return lesser + [pivot] + greater
+
+    # def agent_controller(self):
+    #     self._socket.connect((self._host, self._port))
+    #     self._socket.send(b'Hello, python')
+    #     data = self._socket.recv(1024)
+    #     self._socket.close()
+    #     print('Received', repr(data))
 
 def run_agent(conn, leader=True, UE=True, droneID='', error=[0, 0, 0], seperation_boundary=2, neighbor_boundary=5, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], UE=True)):
     """
