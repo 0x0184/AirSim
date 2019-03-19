@@ -8,13 +8,13 @@ class LocalMap:
     The map is stretched from center latitude and longitude
     The map is optimized for Korea area so the map is not supported border of longitude 180 and -180
     """
-    def __init__(self, coords=[], UE=False):
+    def __init__(self, coords=[], SITL=False):
         """
         Initialize map by GPS data
         coords : [(lat, lon), (lat, lon), ...]
         """
-        self._UE = UE
-        if self._UE:
+        self._SITL = SITL
+        if self._SITL:
             pass
         else:
             if coords is []:

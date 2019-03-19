@@ -18,12 +18,12 @@ class DroneAgent:
     """
     Agent for Drone
     """
-    def __init__(self, leader=True, UE=True, conn=Pipe()[1], droneID='', error=[0, 0, 0], seperation_boundary = 25.0, neighbor_boundary=50, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], UE=True), follower_speed_multiplier=1.5):
+    def __init__(self, leader=True, SITL=True, conn=Pipe()[1], droneID='', error=[0, 0, 0], seperation_boundary = 25.0, neighbor_boundary=50, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], SITL=True), follower_speed_multiplier=1.5):
         """
         leader: Initialize agent's role
             True: leader
             False: follower
-        UE: Initialize environment is Unreal Engine or ROS
+        SITL: Initialize environment is Unreal Engine or ROS
             True: Unreal Engine
             False: ROS
         conn: child_conn of Pipe() to connection with GCS
@@ -33,8 +33,8 @@ class DroneAgent:
         local_map: map of specific gps area
         """
         self._leader = leader
-        self._UE = UE
-        if self._UE:
+        self._SITL = SITL
+        if self._SITL:
             self._client = airsim.MultirotorClient()
             self._conn = conn
             self._duration = 2
@@ -102,7 +102,7 @@ class DroneAgent:
         """
         Set agent's global path list
         """
-        if self._UE:
+        if self._SITL:
             self._global_path_list = global_path_list
             self._global_velocity_list = global_velocity_list
             self._path_index = 0
@@ -113,7 +113,7 @@ class DroneAgent:
         """
         get agent's global path list and path index
         """
-        if self._UE:
+        if self._SITL:
             return (self._global_path_list, self._global_velocity_list, self._path_index)
         else:
             return (None, None)
@@ -122,7 +122,7 @@ class DroneAgent:
         """
         check drone is on which path
         """
-        if self._UE:
+        if self._SITL:
             if self._leader:
                 if localmap.distance2Dv(loc2d1=self._location, loc2d2=self._global_path_list[self._path_index]) < check_boundary:
                     self._path_index += 1
@@ -131,7 +131,7 @@ class DroneAgent:
         """
         check drone is on which path
         """
-        if self._UE:
+        if self._SITL:
             if self._leader:
                 if localmap.distance3Dv(loc3d1=self._location, loc3d2=self._global_path_list[self._path_index]) < check_boundary:
                     self._path_index += 1
@@ -158,14 +158,14 @@ class DroneAgent:
         """
         Agent check connection with Drone
         """
-        if self._UE:
+        if self._SITL:
             self._client.confirmConnection()
 
     def takeoff(self):
         """
         Agent command drone to take off
         """
-        if self._UE:
+        if self._SITL:
             self._client.enableApiControl(True, vehicle_name=self._droneID)
             self._client.armDisarm(True, vehicle_name=self._droneID)
             self._client.takeoffAsync(vehicle_name=self._droneID).join()
@@ -174,7 +174,7 @@ class DroneAgent:
         """
         Agent commend drone to land
         """
-        if self._UE:
+        if self._SITL:
             # airsim's landAsync command is unstable
             self._client.moveToPositionAsync(self._location.x_val, self._location.y_val, 0, land_speed, vehicle_name=self._droneID).join()
             self._client.landAsync(vehicle_name=self._droneID).join()
@@ -187,7 +187,7 @@ class DroneAgent:
         position: (x, y, z) 3d position tuple
         velocity: moving velosity (m/s)
         """
-        if self._UE:
+        if self._SITL:
             self._client.moveToPositionAsync(position[0], position[1], position[2], velocity, vehicle_name=self._droneID).join()
             self._client.hoverAsync(vehicle_name=self._droneID).join()
 
@@ -329,7 +329,7 @@ class DroneAgent:
         """
         Agent command drone to fly by flocking
         """
-        if self._UE:
+        if self._SITL:
             # collect drone's location
             self._location = self._client.getMultirotorState(vehicle_name=self._droneID).kinematics_estimated.position
             self._location.x_val += self._error[0]
@@ -528,7 +528,7 @@ class DroneAgent:
             'column'
             'line'
         """
-        if self._UE:
+        if self._SITL:
             # collect drone's location
             self._location = self._client.getMultirotorState(vehicle_name=self._droneID).kinematics_estimated.position
             self._location.x_val += self._error[0]
@@ -617,14 +617,14 @@ class DroneAgent:
     #     self._socket.close()
     #     print('Received', repr(data))
 
-def run_agent(conn, leader=True, UE=True, droneID='', error=[0, 0, 0], seperation_boundary=2, neighbor_boundary=5, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], UE=True)):
+def run_agent(conn, leader=True, SITL=True, droneID='', error=[0, 0, 0], seperation_boundary=2, neighbor_boundary=5, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], SITL=True)):
     """
     run drone agent with gcs command for Unreal Engine with AirSim
     conn: child_conn of Pipe() to connection with GCS
     leader: Initialize agent's role
         True: leader
         False: follower
-    UE: Initialize environment is Unreal Engine or ROS
+    SITL: Initialize environment is Unreal Engine or ROS
         True: Unreal Engine
         False: ROS
     client: Initialize client if environment is Unreal Engine
@@ -633,9 +633,9 @@ def run_agent(conn, leader=True, UE=True, droneID='', error=[0, 0, 0], seperatio
     angle: Initialize agent's flocking neighborhood boundary angle(0~180)
     local_map: map of specific gps area
     """
-    droneAgent = DroneAgent(leader=leader, UE=UE, conn=conn, droneID=droneID, seperation_boundary=seperation_boundary, neighbor_boundary=neighbor_boundary, neighbor_angle=neighbor_angle, local_map=local_map, error=error)
+    droneAgent = DroneAgent(leader=leader, SITL=SITL, conn=conn, droneID=droneID, seperation_boundary=seperation_boundary, neighbor_boundary=neighbor_boundary, neighbor_angle=neighbor_angle, local_map=local_map, error=error)
     while True:
-        if UE:
+        if SITL:
             command = conn.recv()
             if command[0] == 'set_global_path':
                 droneAgent.set_global_path(global_path_list=command[1], global_velocity_list=command[2])
