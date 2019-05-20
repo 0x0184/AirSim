@@ -32,7 +32,7 @@ class PipeServer:
                 buffer = ''
             msgs = msg.strip().split('\n')
 
-            for i in len(msgs):
+            for i in range(len(msgs)):
                 if i == len(msgs)-1 and msg[-1] != '\n':
                     buffer += msgs[i]
                 msgs[i] = json.loads(msgs[i])
@@ -79,7 +79,7 @@ class PipeClient:
                 buffer = ''
             msgs = msg.strip().split('\n')
 
-            for i in len(msgs):
+            for i in range(len(msgs)):
                 if i == len(msgs)-1 and msg[-1] != '\n':
                     buffer += msgs[i]
                 msgs[i] = json.loads(msgs[i])
