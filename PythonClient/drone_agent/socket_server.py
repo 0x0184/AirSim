@@ -6,7 +6,7 @@ def main():
     processes = []
     parentConn = []
 
-    host = '127.0.0.1'
+    host = '192.168.0.71'
     client_port = 4000
     drone_port = [client_port + i for i in range(1, 10)]
 
@@ -14,9 +14,9 @@ def main():
     clientProc = PipeServer(clientChild, host, client_port)
     clientProc.start()
 
-    datas = clientParent.recv()
+    info = clientParent.recv()
 
-    num = datas[0]
+    num = info[0]
 
     for i in range(num):
         parent, child = Pipe()
@@ -27,9 +27,9 @@ def main():
 
     for i in range(num):
         datas = dict()
-        datas['droneID'] = datas[1][i]
-        datas['is_leader'] = datas[2][i]
-        datas['error'] = datas[3][i]
+        datas['droneID'] = info[1][i]
+        datas['is_leader'] = info[2][i]
+        datas['error'] = info[3][i]
         parentConn[i].send(datas)
 
     while True:
