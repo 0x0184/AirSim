@@ -542,7 +542,7 @@ class DroneAgent:
             data = self._conn.recv()
             locations = []
             velocities = []
-            for data_dict in data:
+            for i, data_dict in enumerate(data):
                 data[i]['location'] = vector.from_dict_3r(data_dict['location'])
                 data[i]['velocity'] = vector.from_dict(data_dict['velocity'])
                 locations.append(data[i]['location'])
