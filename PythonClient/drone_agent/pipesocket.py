@@ -27,7 +27,7 @@ class PipeServer:
             msg = self._conn.recv(4096)
             msg = msg.decode('utf-8')
 
-            if buffer is not '':
+            if buffer != '':
                 msg = buffer + msg
                 buffer = ''
             msgs = msg.strip().split('\n')
@@ -69,11 +69,12 @@ class PipeClient:
         self._send_proc.start()
 
     def recv_message(self, child_conn):
+        buffer = ''
         while True:
             msg = self._s.recv(4096)
             msg = msg.decode('utf-8')
 
-            if buffer is not '':
+            if buffer != '':
                 msg = buffer + msg
                 buffer = ''
             msgs = msg.strip().split('\n')
