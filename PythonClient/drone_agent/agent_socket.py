@@ -336,14 +336,15 @@ class DroneAgent:
             loc = vector.to_dict(self._location)
             vel = vector.to_dict(self._velocity)
             self._conn.send({'droneID': self._droneID, 'leader': self._leader, 'location': loc, 'velocity': vel})
-
+            # broking
             data = self._conn.recv()
             locations = []
             velocities = []
-            if data[0] == 'broking':
-                for data_dict in data[1]:
-                    locations.append(vector.from_dict_3r(data_dict['location']))
-                    velocities.append(vector.from_dict(data_dict['velocity']))
+            for i, data_dict in enumerate(data):
+                data[i]['location'] = vector.from_dict_3r(data_dict['location'])
+                data[i]['velocity'] = vector.from_dict(data_dict['velocity'])
+                locations.append(data[i]['location'])
+                velocities.append(data[i]['velocity'])
 
             # check distance is less than boundary
             visible = []
@@ -372,9 +373,9 @@ class DroneAgent:
                 self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
             else:
                 self._maxspeed = self._global_velocity_list[self._path_index] * self._maxspeed_weight
-                col_avo = self.collision_avoidance(weight=weights[0], drones=data[1], visible=visible, height_control=height_control)
-                vel_mat = self.velocity_matching(weight=weights[1], drones=data[1], visible=visible)
-                flo_cet = self.flocking_center(weight=weights[2], drones=data[1], visible=visible, height_control=height_control)
+                col_avo = self.collision_avoidance(weight=weights[0], drones=data, visible=visible, height_control=height_control)
+                vel_mat = self.velocity_matching(weight=weights[1], drones=data, visible=visible)
+                flo_cet = self.flocking_center(weight=weights[2], drones=data, visible=visible, height_control=height_control)
                 acceleration = (col_avo + vel_mat + flo_cet)
                 steer = self._velocity + acceleration
                 steer.make_steer(self._maxspeed)
@@ -537,14 +538,15 @@ class DroneAgent:
             loc = vector.to_dict(self._location)
             vel = vector.to_dict(self._velocity)
             self._conn.send({'droneID': self._droneID, 'leader': self._leader, 'location': loc, 'velocity': vel})
-
+            # broking
             data = self._conn.recv()
             locations = []
             velocities = []
-            if data[0] == 'broking':
-                for data_dict in data[1]:
-                    locations.append(vector.from_dict_3r(data_dict['location']))
-                    velocities.append(vector.from_dict(data_dict['velocity']))
+            for data_dict in data:
+                data[i]['location'] = vector.from_dict_3r(data_dict['location'])
+                data[i]['velocity'] = vector.from_dict(data_dict['velocity'])
+                locations.append(data[i]['location'])
+                velocities.append(data[i]['velocity'])
 
             # check distance is less than boundary
             visible = []
@@ -573,9 +575,9 @@ class DroneAgent:
                 self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
             else:
                 self._maxspeed = self._global_velocity_list[self._path_index] * self._maxspeed_weight
-                col_avo = self.collision_avoidance(weight=weights[0], drones=data[1], visible=visible, height_control=height_control)
-                vel_mat = self.velocity_matching(weight=weights[1], drones=data[1], visible=visible)
-                for_con = self.formation_control(weight=weights[2], drones=data[1], mode=mode)
+                col_avo = self.collision_avoidance(weight=weights[0], drones=data, visible=visible, height_control=height_control)
+                vel_mat = self.velocity_matching(weight=weights[1], drones=data, visible=visible)
+                for_con = self.formation_control(weight=weights[2], drones=data, mode=mode)
                 acceleration = (col_avo + vel_mat + for_con)
                 steer = self._velocity + acceleration
                 steer.make_steer(self._maxspeed)

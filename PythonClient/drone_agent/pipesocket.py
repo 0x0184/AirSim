@@ -23,7 +23,7 @@ class PipeServer:
     def recv_message(self, child_conn):
         self._conn, _ = self._s.accept()
         while True:
-            msg = self._conn.recv(2048)
+            msg = self._conn.recv(4096)
             msg = msg.decode('utf-8')
             msg = json.loads(msg)
             child_conn.send(msg)
@@ -60,7 +60,7 @@ class PipeClient:
 
     def recv_message(self, child_conn):
         while True:
-            msg = self._s.recv(2048)
+            msg = self._s.recv(4096)
             msg = msg.decode('utf-8')
             msg = json.loads(msg)
             child_conn.send(msg)
