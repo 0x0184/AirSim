@@ -1,5 +1,6 @@
 import agent
 from vector import Vector
+import vector
 import localmap
 import haversine
 import time
@@ -8,14 +9,15 @@ import json
 from pipesocket import PipeClient
 from multiprocessing import Pipe
 
+leader_id = ''
 path_index = 0
 
 def mission_complete(datas, path_list, boundary=3):
     global path_index
 
     for i in range(len(datas)):
-        if datas[i]['is_leader']:
-            leader_location = datas[i]['location']
+        if datas[i][0] == leader_id:
+            leader_location = vector.from_dict_3r(datas[i][1])
             distance = localmap.distance3Dv(loc3d1=leader_location, loc3d2=path_list[path_index])
             if distance < boundary:
                 path_index += 1
@@ -27,7 +29,11 @@ def mission_complete(datas, path_list, boundary=3):
 if __name__ is '__main__':
     host = '127.0.0.1'
     port = 4000
+
     drone_num = 9
+    droneIDs=['Drone1', 'Drone2', 'Drone3', 'Drone4', 'Drone5', 'Drone6', 'Drone7', 'Drone8', 'Drone9']
+    is_leader=[True, False, False, False, False, False, False, False, False]
+    errors=[[0, 0, 0], [2, 2, 0], [4, 0, 0], [2, -2, 0], [2, 0, 0], [4, -2, 0], [4, 2, 0], [0, -2, 0], [0, 2, 0]]
 
     # set path list
     path_list1 = [Vector(0, 100, -15), Vector(0, 200, -40), Vector(0, 300, -40)]
@@ -46,7 +52,8 @@ if __name__ is '__main__':
     proc = PipeClient(child, host, port)
     proc.start()
 
-    parent.send(drone_num)
+    datas = [drone_num, droneIDs, is_leader, errors]
+    parent.send(datas)
 
     input('start_simulation')
 

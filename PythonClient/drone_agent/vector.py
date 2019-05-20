@@ -1,4 +1,5 @@
 import math
+from airsim.types import Vector3r
 
 class Vector:
     """
@@ -183,3 +184,30 @@ class Vector:
     def toString(self):
         from pprint import pformat
         return "<" + type(self).__name__ + "> " + pformat(vars(self), indent=4, width=1)
+
+def to_dict(vec):
+    dic = dict()
+
+    dic['x_val'] = vec.x_val
+    dic['y_val'] = vec.y_val
+    dic['z_val'] = vec.z_val
+
+    return dic
+
+def from_dict_3r(dic):
+    vec = Vector3r()
+
+    vec.x_val = dic['x_val']
+    vec.y_val = dic['y_val']
+    vec.z_val = dic['z_val']
+
+    return vec
+
+def from_dict(dic):
+    vec = Vector()
+
+    vec.x_val = dic['x_val']
+    vec.y_val = dic['y_val']
+    vec.z_val = dic['z_val']
+
+    return vec

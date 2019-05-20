@@ -333,15 +333,17 @@ class DroneAgent:
             self._location.z_val += self._error[2]
             # self._angular_velocity = self._client.getMultirotorState().kinematics_estimated.angular_velocity
 
-            self._conn.send({'droneID': self._droneID, 'leader': self._leader, 'location': self._location, 'velocity': self._velocity})
+            loc = vector.to_dict(self._location)
+            vel = vector.to_dict(self._velocity)
+            self._conn.send({'droneID': self._droneID, 'leader': self._leader, 'location': loc, 'velocity': vel})
 
             data = self._conn.recv()
             locations = []
             velocities = []
             if data[0] == 'broking':
                 for data_dict in data[1]:
-                    locations.append(data_dict['location'])
-                    velocities.append(data_dict['velocity'])
+                    locations.append(vector.from_dict_3r(data_dict['location']))
+                    velocities.append(vector.from_dict(data_dict['velocity']))
 
             # check distance is less than boundary
             visible = []
@@ -532,15 +534,17 @@ class DroneAgent:
             self._location.z_val += self._error[2]
             # self._angular_velocity = self._client.getMultirotorState().kinematics_estimated.angular_velocity
 
-            self._conn.send({'droneID': self._droneID, 'leader': self._leader, 'location': self._location, 'velocity': self._velocity})
+            loc = vector.to_dict(self._location)
+            vel = vector.to_dict(self._velocity)
+            self._conn.send({'droneID': self._droneID, 'leader': self._leader, 'location': loc, 'velocity': vel})
 
             data = self._conn.recv()
             locations = []
             velocities = []
             if data[0] == 'broking':
                 for data_dict in data[1]:
-                    locations.append(data_dict['location'])
-                    velocities.append(data_dict['velocity'])
+                    locations.append(vector.from_dict_3r(data_dict['location']))
+                    velocities.append(vector.from_dict(data_dict['velocity']))
 
             # check distance is less than boundary
             visible = []
@@ -595,7 +599,10 @@ class DroneAgent:
         self._location.x_val += self._error[0]
         self._location.y_val += self._error[1]
         self._location.z_val += self._error[2]
-        self._conn.send([self._droneID, self._location])
+
+        dic = vector.to_dict(self._location)
+
+        self._conn.send([self._droneID, dic])
 
     def distance_qsort(self, inlist=[]):
         if inlist == []:
@@ -656,6 +663,7 @@ def run_agent(conn, leader=True, SITL=True, droneID='', error=[0, 0, 0], seperat
 
 if __name__ is '__main__':
     from threading import Thread
+    import time
 
     drone_num = 9
 
@@ -664,7 +672,6 @@ if __name__ is '__main__':
 
     for i in range(drone_num):
         parent, child = Pipe()
-        PipeClient(child, host, port+i+1)
+        PipeClient(child, host, port+i+1).start()
         proc = Thread(target=run_agent, args=(parent, ))
         proc.start()
-        print(str(i)+' started')

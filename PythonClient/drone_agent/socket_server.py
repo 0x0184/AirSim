@@ -3,10 +3,6 @@ from multiprocessing import Process, Pipe
 from pipesocket import PipeServer
 
 def main():
-    droneIDs=['Drone1', 'Drone2', 'Drone3', 'Drone4', 'Drone5', 'Drone6', 'Drone7', 'Drone8', 'Drone9']
-    is_leader=[True, False, False, False, False, False, False, False, False]
-    errors=[[0, 0, 0], [2, 2, 0], [4, 0, 0], [2, -2, 0], [2, 0, 0], [4, -2, 0], [4, 2, 0], [0, -2, 0], [0, 2, 0]]
-
     processes = []
     parentConn = []
 
@@ -18,7 +14,9 @@ def main():
     clientProc = PipeServer(clientChild, host, client_port)
     clientProc.start()
 
-    num = clientParent.recv()
+    datas = clientParent.recv()
+
+    num = datas[0]
 
     for i in range(num):
         parent, child = Pipe()
@@ -29,9 +27,9 @@ def main():
 
     for i in range(num):
         datas = dict()
-        datas['droneID'] = droneIDs[i]
-        datas['is_leader'] = is_leader[i]
-        datas['error'] = errors[i]
+        datas['droneID'] = datas[1][i]
+        datas['is_leader'] = datas[2][i]
+        datas['error'] = datas[3][i]
         parentConn[i].send(datas)
 
     while True:

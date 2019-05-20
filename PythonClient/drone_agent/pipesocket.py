@@ -81,7 +81,7 @@ if __name__ is '__main__':
 
     parent, child = Pipe()
 
-    proc = PipeServer(child, '127.0.0.1', 4000)
+    proc = PipeServer(child, '192.168.0.54', 4000)
 
     proc.start()
 
