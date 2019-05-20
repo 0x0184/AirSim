@@ -67,7 +67,7 @@ if __name__ is '__main__':
     datas = parent.recv()
 
     command['command'] = 'set_global_path'
-    command['data'] = [path_list1, speed_list1]
+    command['data'] = [[vector.to_dict(path_list1[i]) for i in range(len(path_list1))], speed_list1]
     parent.send(command)
 
     while not mission_complete(datas, path_list1, boundary=3):
@@ -83,10 +83,10 @@ if __name__ is '__main__':
         datas = parent.recv()
 
     command['command'] = 'set_global_path'
-    command['data'] = [path_list2, speed_list2]
+    command['data'] = [[vector.to_dict(path_list2[i]) for i in range(len(path_list2))], speed_list2]
     parent.send(command)
 
-    while not mission_complete(datas, path_list1, boundary=3):
+    while not mission_complete(datas, path_list2, boundary=3):
         command['command'] = 'formation_flight'
         command['data'] = [[1, 1, 5], check_boundary, 'column']
         parent.send(command)
@@ -99,10 +99,10 @@ if __name__ is '__main__':
         datas = parent.recv()
 
     command['command'] = 'set_global_path'
-    command['data'] = [path_list3, speed_list3]
+    command['data'] = [[vector.to_dict(path_list3[i]) for i in range(len(path_list3))], speed_list3]
     parent.send(command)
 
-    while not mission_complete(datas, path_list1, boundary=3):
+    while not mission_complete(datas, path_list3, boundary=3):
         command['command'] = 'formation_flight'
         command['data'] = [[1, 1, 5], check_boundary, 'line']
         parent.send(command)
@@ -115,10 +115,10 @@ if __name__ is '__main__':
         datas = parent.recv()
 
     command['command'] = 'set_global_path'
-    command['data'] = [path_list4, speed_list4]
+    command['data'] = [[vector.to_dict(path_list4[i]) for i in range(len(path_list4))], speed_list4]
     parent.send(command)
 
-    while not mission_complete(datas, path_list1, boundary=3):
+    while not mission_complete(datas, path_list4, boundary=3):
         command['command'] = 'flocking_flight'
         command['data'] = [[1.5, 1, 1], check_boundary]
         parent.send(command)

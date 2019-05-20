@@ -99,7 +99,7 @@ class DroneAgent:
         Set agent's global path list
         """
         if self._SITL:
-            self._global_path_list = global_path_list
+            self._global_path_list = [vector.from_dict(global_path_list[i]) for i in range(len(global_path_list))]
             self._global_velocity_list = global_velocity_list
             self._path_index = 0
         else:
