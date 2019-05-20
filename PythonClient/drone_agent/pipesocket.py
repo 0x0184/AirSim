@@ -22,11 +22,21 @@ class PipeServer:
 
     def recv_message(self, child_conn):
         self._conn, _ = self._s.accept()
+        buffer = ''
         while True:
             msg = self._conn.recv(4096)
             msg = msg.decode('utf-8')
-            msg = json.loads(msg)
-            child_conn.send(msg)
+
+            if buffer is not '':
+                msg = buffer + msg
+                buffer = ''
+            msgs = msg.strip().split('\n')
+
+            for i in len(msgs):
+                if i == len(msgs)-1 and msg[-1] != '\n':
+                    buffer += msgs[i]
+                msgs[i] = json.loads(msgs[i])
+                child_conn.send(msgs[i])
 
     def send_message(self, child_conn):
         while self._conn is None:
@@ -34,8 +44,8 @@ class PipeServer:
         while True:
             datas = child_conn.recv()
             msg = json.dumps(datas)
-            self._conn.sendall(msg.encode('utf-8'))
-            time.sleep(0.1)
+            self._conn.sendall(msg.encode('utf-8')+'\n')
+            time.sleep(0.01)
 
     def close(self):
         self._recv_proc.join()
@@ -62,15 +72,24 @@ class PipeClient:
         while True:
             msg = self._s.recv(4096)
             msg = msg.decode('utf-8')
-            msg = json.loads(msg)
-            child_conn.send(msg)
+
+            if buffer is not '':
+                msg = buffer + msg
+                buffer = ''
+            msgs = msg.strip().split('\n')
+
+            for i in len(msgs):
+                if i == len(msgs)-1 and msg[-1] != '\n':
+                    buffer += msgs[i]
+                msgs[i] = json.loads(msgs[i])
+                child_conn.send(msgs[i])
 
     def send_message(self, child_conn):
         while True:
             datas = child_conn.recv()
             msg = json.dumps(datas)
-            self._s.sendall(msg.encode('utf-8'))
-            time.sleep(0.1)
+            self._s.sendall(msg.encode('utf-8')+'\n')
+            time.sleep(0.01)
 
     def close(self):
         self._recv_proc.join()
