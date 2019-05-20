@@ -27,7 +27,7 @@ def mission_complete(datas, path_list, boundary=3):
     return False
 
 if __name__ is '__main__':
-    host = '127.0.0.1'
+    host = '192.168.0.71'
     port = 4000
 
     drone_num = 9
