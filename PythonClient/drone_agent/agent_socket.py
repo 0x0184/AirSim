@@ -647,15 +647,15 @@ def run_agent(conn, leader=True, SITL=True, droneID='', error=[0, 0, 0], seperat
         if SITL:
             command = conn.recv()
             if command['command'] == 'set_global_path':
-                droneAgent.set_global_path(global_path_list=command[1], global_velocity_list=command[2])
+                droneAgent.set_global_path(global_path_list=command['data'][0], global_velocity_list=command['data'][1])
             elif command['command'] == 'collect_data':
                 droneAgent.collect_data()
             elif command['command'] == 'takeoff':
                 droneAgent.takeoff()
             elif command['command'] == 'flocking_flight':
-                droneAgent.flocking_flight(weights=command[1], check_boundary=command[2])
+                droneAgent.flocking_flight(weights=command['data'][0], check_boundary=command['data'][1])
             elif command['command'] == 'formation_flight':
-                droneAgent.formation_flight(weights=command[1], check_boundary=command[2], mode=command[3])
+                droneAgent.formation_flight(weights=command['data'][0], check_boundary=command['data'][1], mode=command['data'][2])
             elif command['command'] == 'land':
                 droneAgent.land()
             elif command['command'] == 'end':
