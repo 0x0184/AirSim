@@ -43,8 +43,8 @@ class PipeServer:
             pass
         while True:
             datas = child_conn.recv()
-            msg = json.dumps(datas)
-            self._conn.sendall(msg.encode('utf-8')+'\n')
+            msg = json.dumps(datas)+'\n'
+            self._conn.sendall(msg.encode('utf-8'))
             time.sleep(0.01)
 
     def close(self):
@@ -88,8 +88,8 @@ class PipeClient:
     def send_message(self, child_conn):
         while True:
             datas = child_conn.recv()
-            msg = json.dumps(datas)
-            self._s.sendall(msg.encode('utf-8')+'\n')
+            msg = json.dumps(datas)+'\n'
+            self._s.sendall(msg.encode('utf-8'))
             time.sleep(0.01)
 
     def close(self):
