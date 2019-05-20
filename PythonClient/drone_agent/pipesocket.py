@@ -1,6 +1,7 @@
 import socket
 import json
 from threading import Thread
+import time
 
 class PipeServer:
     """
@@ -34,6 +35,7 @@ class PipeServer:
             datas = child_conn.recv()
             msg = json.dumps(datas)
             self._conn.sendall(msg.encode('utf-8'))
+            time.sleep(0.01)
 
     def close(self):
         self._recv_proc.join()
@@ -68,7 +70,22 @@ class PipeClient:
             datas = child_conn.recv()
             msg = json.dumps(datas)
             self._s.sendall(msg.encode('utf-8'))
+            time.sleep(0.01)
 
     def close(self):
         self._recv_proc.join()
         self._send_proc.join()
+
+if __name__ is '__main__':
+    from multiprocessing import Pipe
+
+    parent, child = Pipe()
+
+    proc = PipeServer(child, '127.0.0.1', 4000)
+
+    proc.start()
+
+    while True:
+        data = parent.recv()
+        print(data)
+        parent.send(data)

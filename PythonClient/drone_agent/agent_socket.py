@@ -655,16 +655,16 @@ def run_agent(conn, leader=True, SITL=True, droneID='', error=[0, 0, 0], seperat
                 break
 
 if __name__ is '__main__':
-    from multiprocessing import Process
+    from threading import Thread
 
     drone_num = 9
 
-    host = '127.0.0.1'
+    host = '192.168.0.71'
     port = 4000
-
-    processes = []
 
     for i in range(drone_num):
         parent, child = Pipe()
-        proc = Process(target=run_agent, args=(parent))
+        PipeClient(child, host, port+i+1)
+        proc = Thread(target=run_agent, args=(parent, ))
         proc.start()
+        print(str(i)+' started')
