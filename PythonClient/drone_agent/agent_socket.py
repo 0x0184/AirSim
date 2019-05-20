@@ -12,7 +12,7 @@ import localmap
 import vector
 import haversine
 
-import socket
+from pipesocket import PipeClient
 
 class DroneAgent:
     """
@@ -38,10 +38,6 @@ class DroneAgent:
             self._client = airsim.MultirotorClient(ip='127.0.0.1', port=41451, timeout_value=3600)
             self._conn = conn
             self._duration = 2
-        else:
-            self._host = '127.0.0.1'
-            self._port = 10000
-            self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             
         self._droneID = droneID
         self._error = error
@@ -633,22 +629,42 @@ def run_agent(conn, leader=True, SITL=True, droneID='', error=[0, 0, 0], seperat
     angle: Initialize agent's flocking neighborhood boundary angle(0~180)
     local_map: map of specific gps area
     """
+
+    info = conn.recv()
+    leader = info['is_leader']
+    droneID = info['droneID']
+    error = info['error']
+
     droneAgent = DroneAgent(leader=leader, SITL=SITL, conn=conn, droneID=droneID, seperation_boundary=seperation_boundary, neighbor_boundary=neighbor_boundary, neighbor_angle=neighbor_angle, local_map=local_map, error=error)
     while True:
         if SITL:
             command = conn.recv()
-            if command[0] == 'set_global_path':
+            if command['command'] == 'set_global_path':
                 droneAgent.set_global_path(global_path_list=command[1], global_velocity_list=command[2])
-            elif command[0] == 'collect_data':
+            elif command['command'] == 'collect_data':
                 droneAgent.collect_data()
-            elif command[0] == 'takeoff':
+            elif command['command'] == 'takeoff':
                 droneAgent.takeoff()
-            elif command[0] == 'flocking_flight':
+            elif command['command'] == 'flocking_flight':
                 droneAgent.flocking_flight(weights=command[1], check_boundary=command[2])
-            elif command[0] == 'formation_flight':
+            elif command['command'] == 'formation_flight':
                 droneAgent.formation_flight(weights=command[1], check_boundary=command[2], mode=command[3])
-            elif command[0] == 'land':
+            elif command['command'] == 'land':
                 droneAgent.land()
-            elif command[0] == 'end':
+            elif command['command'] == 'end':
                 break
 
+if __name__ is '__main__':
+    from multiprocessing import Process
+
+    drone_num = 9
+
+    host = '127.0.0.1'
+    port = 4000
+
+    processes = []
+
+    for i in range(drone_num):
+        parent, child = Pipe()
+        proc = Process(target=run_agent, args=(parent))
+        proc.start()
