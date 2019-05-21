@@ -87,9 +87,12 @@ class PipeClient:
 
     def send_message(self, child_conn):
         while True:
-            datas = child_conn.recv()
-            msg = json.dumps(datas)+'\n'
-            self._s.sendall(msg.encode('utf-8'))
+            try:
+                datas = child_conn.recv()
+                msg = json.dumps(datas)+'\n'
+                self._s.sendall(msg.encode('utf-8'))
+            except EOFError as e:
+                print(e)
             time.sleep(0.01)
 
     def close(self):
@@ -101,7 +104,8 @@ if __name__ is '__main__':
 
     parent, child = Pipe()
 
-    proc = PipeServer(child, '192.168.0.54', 4000)
+    proc = PipeServer(child, '127.0.0.1', 4000)
+    #proc = PipeServer(child, '192.168.0.54', 4000)
 
     proc.start()
 
