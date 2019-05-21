@@ -48,7 +48,7 @@ class DroneAgent:
         self._follower_speed_multiplier = follower_speed_multiplier
         filename = self._droneID + '_flight.log'
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self._log = open(dir_path+'\\log\\'+filename, 'w')
+        #self._log = open(dir_path+'\\log\\'+filename, 'w')
         self._velocity = vector.Vector()
         self._maxspeed = 2
         self._maxspeed_weight = 1
@@ -369,8 +369,8 @@ class DroneAgent:
                 self._velocity = steer
                 log_location = vector.Vector() + self._location
                 log_velocity = vector.Vector() + self._velocity
-                self._log.write('log_location: '+log_location.toString()+'\n')
-                self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
+                #self._log.write('log_location: '+log_location.toString()+'\n')
+                #self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
             else:
                 self._maxspeed = self._global_velocity_list[self._path_index] * self._maxspeed_weight
                 col_avo = self.collision_avoidance(weight=weights[0], drones=data, visible=visible, height_control=height_control)
@@ -384,11 +384,11 @@ class DroneAgent:
                 self._velocity = steer
                 log_location = vector.Vector() + self._location
                 log_velocity = vector.Vector() + self._velocity
-                self._log.write('col_avo: '+col_avo.toString()+'\n')
-                self._log.write('vel_mat: '+vel_mat.toString()+'\n')
-                self._log.write('flo_cet: '+flo_cet.toString()+'\n')
-                self._log.write('log_location: '+log_location.toString()+'\n')
-                self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
+                #self._log.write('col_avo: '+col_avo.toString()+'\n')
+                #self._log.write('vel_mat: '+vel_mat.toString()+'\n')
+                #self._log.write('flo_cet: '+flo_cet.toString()+'\n')
+                #self._log.write('log_location: '+log_location.toString()+'\n')
+                #self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
         else:
             pass
 
@@ -571,8 +571,8 @@ class DroneAgent:
                 self._velocity = steer
                 log_location = vector.Vector() + self._location
                 log_velocity = vector.Vector() + self._velocity
-                self._log.write('log_location: '+log_location.toString()+'\n')
-                self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
+                #self._log.write('log_location: '+log_location.toString()+'\n')
+                #self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
             else:
                 self._maxspeed = self._global_velocity_list[self._path_index] * self._maxspeed_weight
                 col_avo = self.collision_avoidance(weight=weights[0], drones=data, visible=visible, height_control=height_control)
@@ -586,10 +586,10 @@ class DroneAgent:
                 self._velocity = steer
                 log_location = vector.Vector() + self._location
                 log_velocity = vector.Vector() + self._velocity
-                self._log.write('col_avo: '+col_avo.toString()+'\n')
-                self._log.write('steer: '+steer.toString()+'\n')
-                self._log.write('log_location: '+log_location.toString()+'\n')
-                self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
+                #self._log.write('col_avo: '+col_avo.toString()+'\n')
+                #self._log.write('steer: '+steer.toString()+'\n')
+                #self._log.write('log_location: '+log_location.toString()+'\n')
+                #self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
         else:
             pass
 
@@ -667,9 +667,9 @@ if __name__ is '__main__':
     from threading import Thread
     import time
 
-    drone_num = 9
+    drone_num = 8#9
 
-    host = '192.168.0.71'
+    host = '127.0.0.1'#'192.168.0.71'
     port = 4000
 
     for i in range(drone_num):
