@@ -35,7 +35,7 @@ class DroneAgent:
         self._leader = leader
         self._SITL = SITL
         if self._SITL:
-            self._client = airsim.MultirotorClient(ip='192.168.35.9', port=41451, timeout_value=3600)
+            self._client = airsim.MultirotorClient(ip='127.0.0.1', port=41451, timeout_value=3600)
             self._conn = conn
             self._duration = 2
             
@@ -669,7 +669,7 @@ if __name__ == '__main__':
 
     drone_num = 9
 
-    host = '192.168.35.9'
+    host = '127.0.0.1'
     port = 4000
 
     for i in range(drone_num):
