@@ -45,7 +45,6 @@ class PipeServer:
             datas = child_conn.recv()
             msg = json.dumps(datas)+'\n'
             self._conn.sendall(msg.encode('utf-8'))
-            time.sleep(0.01)
 
     def close(self):
         self._recv_proc.join()
@@ -93,7 +92,6 @@ class PipeClient:
                 self._s.sendall(msg.encode('utf-8'))
             except EOFError as e:
                 print(e)
-            time.sleep(0.01)
 
     def close(self):
         self._recv_proc.join()
