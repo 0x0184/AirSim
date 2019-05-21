@@ -58,6 +58,7 @@ class PipeClient:
     """
     def __init__(self, child_conn, host='', port=4000):
         self._s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print('host: %s, port: %d' % (host, port))
         self._s.connect((host, port))
 
         self._recv_proc = Thread(target=self.recv_message, args=(child_conn,))

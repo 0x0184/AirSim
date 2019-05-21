@@ -35,7 +35,7 @@ class DroneAgent:
         self._leader = leader
         self._SITL = SITL
         if self._SITL:
-            self._client = airsim.MultirotorClient(ip='127.0.0.1', port=41451, timeout_value=3600)
+            self._client = airsim.MultirotorClient(ip='192.168.35.9', port=41451, timeout_value=3600)
             self._conn = conn
             self._duration = 2
             
@@ -663,17 +663,23 @@ def run_agent(conn, leader=True, SITL=True, droneID='', error=[0, 0, 0], seperat
             elif command['command'] == 'end':
                 break
 
-if __name__ is '__main__':
+if __name__ == '__main__':
     from threading import Thread
     import time
 
     drone_num = 9
 
-    host = '192.168.0.71'
+    host = '192.168.35.9'
     port = 4000
 
     for i in range(drone_num):
         parent, child = Pipe()
         PipeClient(child, host, port+i+1).start()
         proc = Thread(target=run_agent, args=(parent, ))
+        proc.daemon = True
         proc.start()
+
+    while True:
+        val = input("Input: ")
+        if val == "q":
+            break
