@@ -54,7 +54,8 @@ class PipeServer:
     """
 
     def recv_message(self, child_conn):
-        self._conn, _ = self._s.accept()
+        self._conn, (hostaddr, port) = self._s.accept()
+        sys.stdout.write("[%f] PipeServer :: hostaddr=%s, port=%s" % (time.time(), hostaddr, port))
         while True:
             # Read message length and unpack it into an integer.
             rsize = self.recvall(4)

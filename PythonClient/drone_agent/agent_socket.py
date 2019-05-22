@@ -18,7 +18,7 @@ class DroneAgent:
     """
     Agent for Drone
     """
-    def __init__(self, leader=True, SITL=True, conn=Pipe()[1], droneID='', error=[0, 0, 0], seperation_boundary = 25.0, neighbor_boundary=50, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], SITL=True), follower_speed_multiplier=1.5):
+    def __init__(self, addr=('127.0.0.1', 4000), leader=True, SITL=True, conn=Pipe()[1], droneID='', error=[0, 0, 0], seperation_boundary = 25.0, neighbor_boundary=50, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], SITL=True), follower_speed_multiplier=1.5):
         """
         leader: Initialize agent's role
             True: leader
@@ -35,7 +35,7 @@ class DroneAgent:
         self._leader = leader
         self._SITL = SITL
         if self._SITL:
-            self._client = airsim.MultirotorClient(ip='127.0.0.1', port=41451, timeout_value=3600)
+            self._client = airsim.MultirotorClient(ip=addr[0], port=41451, timeout_value=3600)
             self._conn = conn
             self._duration = 2
             
@@ -622,7 +622,7 @@ class DroneAgent:
     #     self._socket.close()
     #     print('Received', repr(data))
 
-def run_agent(conn, leader=True, SITL=True, droneID='', error=[0, 0, 0], seperation_boundary=2, neighbor_boundary=5, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], SITL=True)):
+def run_agent(conn, addr=('127.0.0.1', 4000), leader=True, SITL=True, droneID='', error=[0, 0, 0], seperation_boundary=2, neighbor_boundary=5, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], SITL=True)):
     """
     run drone agent with gcs command for Unreal Engine with AirSim
     conn: child_conn of Pipe() to connection with GCS
@@ -644,7 +644,7 @@ def run_agent(conn, leader=True, SITL=True, droneID='', error=[0, 0, 0], seperat
     droneID = info['droneID']
     error = info['error']
 
-    droneAgent = DroneAgent(leader=leader, SITL=SITL, conn=conn, droneID=droneID, seperation_boundary=seperation_boundary, neighbor_boundary=neighbor_boundary, neighbor_angle=neighbor_angle, local_map=local_map, error=error)
+    droneAgent = DroneAgent(addr=addr, leader=leader, SITL=SITL, conn=conn, droneID=droneID, seperation_boundary=seperation_boundary, neighbor_boundary=neighbor_boundary, neighbor_angle=neighbor_angle, local_map=local_map, error=error)
     while True:
         if SITL:
             command = conn.recv()
@@ -668,14 +668,15 @@ if __name__ == '__main__':
     import time
 
     drone_num = 9
+    offset = 0
 
     host = '127.0.0.1'
     port = 4000
 
     for i in range(drone_num):
         parent, child = Pipe()
-        PipeClient(child, host, port+i+1).start()
-        proc = Thread(target=run_agent, args=(parent, ))
+        PipeClient(child, host, port+offset+i+1).start()
+        proc = Thread(target=run_agent, args=(parent, (host, port),))
         proc.daemon = True
         proc.start()
 
