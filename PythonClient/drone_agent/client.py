@@ -28,7 +28,7 @@ def mission_complete(datas, path_list, boundary=3):
 
 if __name__ is '__main__':
     host = '127.0.0.1'
-    port = 4000
+    port = 8500
 
     drone_num = 9
     droneIDs=['Drone1', 'Drone2', 'Drone3', 'Drone4', 'Drone5', 'Drone6', 'Drone7', 'Drone8', 'Drone9']

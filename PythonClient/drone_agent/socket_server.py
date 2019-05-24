@@ -6,8 +6,8 @@ def main():
     processes = []
     parentConn = []
 
-    host = '0.0.0.0'#'127.0.0.1'#'192.168.0.71'
-    client_port = 4000
+    host = '0.0.0.0'
+    client_port = 8500
     drone_port = [client_port + i for i in range(1, 10)]
 
     clientParent, clientChild = Pipe()

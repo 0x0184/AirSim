@@ -18,7 +18,7 @@ class DroneAgent:
     """
     Agent for Drone
     """
-    def __init__(self, addr=('127.0.0.1', 4000), leader=True, SITL=True, conn=Pipe()[1], droneID='', error=[0, 0, 0], seperation_boundary = 25.0, neighbor_boundary=50, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], SITL=True), follower_speed_multiplier=1.5):
+    def __init__(self, addr=('220.67.133.249', 8500), leader=True, SITL=True, conn=Pipe()[1], droneID='', error=[0, 0, 0], seperation_boundary = 25.0, neighbor_boundary=50, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], SITL=True), follower_speed_multiplier=1.5):
         """
         leader: Initialize agent's role
             True: leader
@@ -35,7 +35,7 @@ class DroneAgent:
         self._leader = leader
         self._SITL = SITL
         if self._SITL:
-            self._client = airsim.MultirotorClient(ip=addr[0], port=41451, timeout_value=3600)
+            self._client = airsim.MultirotorClient(ip=addr[0], port=39311, timeout_value=3600)
             self._conn = conn
             self._duration = 2
             
@@ -670,8 +670,8 @@ if __name__ == '__main__':
     drone_num = 9
     offset = 0
 
-    host = '127.0.0.1'
-    port = 4000
+    host = '220.67.133.249'
+    port = 8500
 
     for i in range(drone_num):
         parent, child = Pipe()
