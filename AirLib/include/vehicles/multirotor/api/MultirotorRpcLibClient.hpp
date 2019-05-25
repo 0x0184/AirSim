@@ -12,11 +12,19 @@
 #include "api/RpcLibClientBase.hpp"
 #include "vehicles/multirotor/api/MultirotorCommon.hpp"
 
+#include "api/RpcLibPort.hpp"
+
+const extern uint16_t RpcLibPort;
+
 namespace msr { namespace airlib {
 
 class MultirotorRpcLibClient : public RpcLibClientBase {
 public:
+<<<<<<< HEAD
     MultirotorRpcLibClient(const string& ip_address = "localhost", uint16_t port = 39311, float timeout_sec = 60);
+=======
+    MultirotorRpcLibClient(const string& ip_address = "localhost", uint16_t port = RpcLibPort, float timeout_sec = 60);
+>>>>>>> 75a8f5bcf5d8408626db30f37d35adb2e5c33052
 
     MultirotorRpcLibClient* takeoffAsync(float timeout_sec = 20, const std::string& vehicle_name = "");
     MultirotorRpcLibClient* landAsync(float timeout_sec = 60, const std::string& vehicle_name = "");

@@ -18,7 +18,7 @@ class DroneAgent:
     """
     Agent for Drone
     """
-    def __init__(self, leader=True, SITL=True, conn=Pipe()[1], droneID='', error=[0, 0, 0], seperation_boundary = 25.0, neighbor_boundary=50, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], SITL=True), follower_speed_multiplier=1.5):
+    def __init__(self, addr=('220.67.133.249', 8500), leader=True, SITL=True, conn=Pipe()[1], droneID='', error=[0, 0, 0], seperation_boundary = 25.0, neighbor_boundary=50, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], SITL=True), follower_speed_multiplier=1.5):
         """
         leader: Initialize agent's role
             True: leader
@@ -35,7 +35,7 @@ class DroneAgent:
         self._leader = leader
         self._SITL = SITL
         if self._SITL:
-            self._client = airsim.MultirotorClient(ip='127.0.0.1', port=41451, timeout_value=3600)
+            self._client = airsim.MultirotorClient(ip=addr[0], port=39311, timeout_value=3600)
             self._conn = conn
             self._duration = 2
             
@@ -48,7 +48,7 @@ class DroneAgent:
         self._follower_speed_multiplier = follower_speed_multiplier
         filename = self._droneID + '_flight.log'
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self._log = open(dir_path+'\\log\\'+filename, 'w')
+        #self._log = open(dir_path+'\\log\\'+filename, 'w')
         self._velocity = vector.Vector()
         self._maxspeed = 2
         self._maxspeed_weight = 1
@@ -369,8 +369,8 @@ class DroneAgent:
                 self._velocity = steer
                 log_location = vector.Vector() + self._location
                 log_velocity = vector.Vector() + self._velocity
-                self._log.write('log_location: '+log_location.toString()+'\n')
-                self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
+                #self._log.write('log_location: '+log_location.toString()+'\n')
+                #self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
             else:
                 self._maxspeed = self._global_velocity_list[self._path_index] * self._maxspeed_weight
                 col_avo = self.collision_avoidance(weight=weights[0], drones=data, visible=visible, height_control=height_control)
@@ -384,11 +384,11 @@ class DroneAgent:
                 self._velocity = steer
                 log_location = vector.Vector() + self._location
                 log_velocity = vector.Vector() + self._velocity
-                self._log.write('col_avo: '+col_avo.toString()+'\n')
-                self._log.write('vel_mat: '+vel_mat.toString()+'\n')
-                self._log.write('flo_cet: '+flo_cet.toString()+'\n')
-                self._log.write('log_location: '+log_location.toString()+'\n')
-                self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
+                #self._log.write('col_avo: '+col_avo.toString()+'\n')
+                #self._log.write('vel_mat: '+vel_mat.toString()+'\n')
+                #self._log.write('flo_cet: '+flo_cet.toString()+'\n')
+                #self._log.write('log_location: '+log_location.toString()+'\n')
+                #self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
         else:
             pass
 
@@ -571,8 +571,8 @@ class DroneAgent:
                 self._velocity = steer
                 log_location = vector.Vector() + self._location
                 log_velocity = vector.Vector() + self._velocity
-                self._log.write('log_location: '+log_location.toString()+'\n')
-                self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
+                #self._log.write('log_location: '+log_location.toString()+'\n')
+                #self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
             else:
                 self._maxspeed = self._global_velocity_list[self._path_index] * self._maxspeed_weight
                 col_avo = self.collision_avoidance(weight=weights[0], drones=data, visible=visible, height_control=height_control)
@@ -586,10 +586,10 @@ class DroneAgent:
                 self._velocity = steer
                 log_location = vector.Vector() + self._location
                 log_velocity = vector.Vector() + self._velocity
-                self._log.write('col_avo: '+col_avo.toString()+'\n')
-                self._log.write('steer: '+steer.toString()+'\n')
-                self._log.write('log_location: '+log_location.toString()+'\n')
-                self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
+                #self._log.write('col_avo: '+col_avo.toString()+'\n')
+                #self._log.write('steer: '+steer.toString()+'\n')
+                #self._log.write('log_location: '+log_location.toString()+'\n')
+                #self._log.write('log_velocity: '+log_velocity.toString()+'\n\n')
         else:
             pass
 
@@ -622,7 +622,7 @@ class DroneAgent:
     #     self._socket.close()
     #     print('Received', repr(data))
 
-def run_agent(conn, leader=True, SITL=True, droneID='', error=[0, 0, 0], seperation_boundary=2, neighbor_boundary=5, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], SITL=True)):
+def run_agent(conn, addr=('127.0.0.1', 4000), leader=True, SITL=True, droneID='', error=[0, 0, 0], seperation_boundary=2, neighbor_boundary=5, neighbor_angle=180, local_map=localmap.LocalMap(coords=[], SITL=True)):
     """
     run drone agent with gcs command for Unreal Engine with AirSim
     conn: child_conn of Pipe() to connection with GCS
@@ -644,7 +644,7 @@ def run_agent(conn, leader=True, SITL=True, droneID='', error=[0, 0, 0], seperat
     droneID = info['droneID']
     error = info['error']
 
-    droneAgent = DroneAgent(leader=leader, SITL=SITL, conn=conn, droneID=droneID, seperation_boundary=seperation_boundary, neighbor_boundary=neighbor_boundary, neighbor_angle=neighbor_angle, local_map=local_map, error=error)
+    droneAgent = DroneAgent(addr=addr, leader=leader, SITL=SITL, conn=conn, droneID=droneID, seperation_boundary=seperation_boundary, neighbor_boundary=neighbor_boundary, neighbor_angle=neighbor_angle, local_map=local_map, error=error)
     while True:
         if SITL:
             command = conn.recv()
@@ -663,17 +663,24 @@ def run_agent(conn, leader=True, SITL=True, droneID='', error=[0, 0, 0], seperat
             elif command['command'] == 'end':
                 break
 
-if __name__ is '__main__':
+if __name__ == '__main__':
     from threading import Thread
     import time
 
     drone_num = 9
+    offset = 0
 
-    host = '192.168.0.71'
-    port = 4000
+    host = '220.67.133.249'
+    port = 8500
 
     for i in range(drone_num):
         parent, child = Pipe()
-        PipeClient(child, host, port+i+1).start()
-        proc = Thread(target=run_agent, args=(parent, ))
+        PipeClient(child, host, port+offset+i+1).start()
+        proc = Thread(target=run_agent, args=(parent, (host, port),))
+        proc.daemon = True
         proc.start()
+
+    while True:
+        val = input("Input: ")
+        if val == "q":
+            break

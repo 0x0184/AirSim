@@ -9,12 +9,19 @@
 #include "api/RpcLibServerBase.hpp"
 #include "vehicles/multirotor/api/MultirotorApiBase.hpp"
 
+#include "api/RpcLibPort.hpp"
+
+const extern uint16_t RpcLibPort;
 
 namespace msr { namespace airlib {
 
 class MultirotorRpcLibServer : public RpcLibServerBase {
 public:
+<<<<<<< HEAD
     MultirotorRpcLibServer(ApiProvider* api_provider, string server_address, uint16_t port = 39311);
+=======
+    MultirotorRpcLibServer(ApiProvider* api_provider, string server_address, uint16_t port = RpcLibPort);
+>>>>>>> 75a8f5bcf5d8408626db30f37d35adb2e5c33052
     virtual ~MultirotorRpcLibServer();
 
 protected:

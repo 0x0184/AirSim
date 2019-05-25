@@ -8,13 +8,20 @@
 #include "api/ApiServerBase.hpp"
 #include "api/ApiProvider.hpp"
 
+#include "api/RpcLibPort.hpp"
+
+const extern uint16_t RpcLibPort;
 
 namespace msr { namespace airlib {
 
 
 class RpcLibServerBase : public ApiServerBase {
 public:
+<<<<<<< HEAD
     RpcLibServerBase(ApiProvider* api_provider, const std::string& server_address, uint16_t port = 39311);
+=======
+    RpcLibServerBase(ApiProvider* api_provider, const std::string& server_address, uint16_t port = RpcLibPort);
+>>>>>>> 75a8f5bcf5d8408626db30f37d35adb2e5c33052
     virtual ~RpcLibServerBase() override;
 
     virtual void start(bool block, std::size_t thread_count) override;
