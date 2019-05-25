@@ -24,11 +24,7 @@ public:
         Initial = 0, Connected, Disconnected, Reset, Unknown
     };
 public:
-<<<<<<< HEAD
-    RpcLibClientBase(const string& ip_address = "localhost", uint16_t port = 39311, float timeout_sec = 60);
-=======
     RpcLibClientBase(const string& ip_address = "localhost", uint16_t port = RpcLibPort, float timeout_sec = 60);
->>>>>>> 75a8f5bcf5d8408626db30f37d35adb2e5c33052
     virtual ~RpcLibClientBase();    //required for pimpl
 
     void confirmConnection();
