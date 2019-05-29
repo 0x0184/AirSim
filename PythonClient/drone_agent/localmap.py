@@ -2,9 +2,18 @@ import haversine
 import math
 from vector import Vector
 
+"""
+AirSim(NED)
+    All AirSim API uses NED coordinate system, i.e., +X is North, +Y is East and +Z is Down.
+MAVROS(ENU)
+    With MAVROS this operation is straightforward. ROS uses ENU frames as convention, therefore position feedback must be provided in ENU.
+Telemetry(NED)
+    If you do not use MAVROS or ROS in general, you need to stream data over MAVLink with ATT_POS_MOCAP message. In this case you will need to apply a custom transformation depending on the system in order to obtain NED convention.
+"""
+
 class LocalMap:
     """
-    Map for GPS map to 2D map
+    Map for GPS map to 2D or 3D map for mavros
     The map is stretched from center latitude and longitude
     The map is optimized for Korea area so the map is not supported border of longitude 180 and -180
     """
