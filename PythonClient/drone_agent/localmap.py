@@ -52,8 +52,8 @@ class LocalMap:
         coord : tuple likes (lat, lon)
         return : (x, y)
         """
-        x = haversine.Haversine2D((self._center_lat, self._center_lon), (self._center_lat, coord[1]))
-        y = haversine.Haversine2D((self._center_lat, self._center_lon), (coord[0], self._center_lon))
+        x = haversine.Haversine2D((self._center_lat, self._center_lon), (self._center_lat, coord[1])).meters
+        y = haversine.Haversine2D((self._center_lat, self._center_lon), (coord[0], self._center_lon)).meters
 
         if coord[1] < self._center_lon:
             x *= -1
@@ -66,9 +66,9 @@ class LocalMap:
         coord : tuple likes (lat, lon, alt)
         return : (x, y, z)
         """
-        x = haversine.Haversine2D((self._center_lat, self._center_lon), (self._center_lat, coord[1]))
+        x = haversine.Haversine2D((self._center_lat, self._center_lon), (self._center_lat, coord[1])).meters
         y = haversine.Haversine2D((self._center_lat, self._center_lon), (coord[0], self._center_lon))
-        z = coord[2]
+        z = coord[2].meters
 
         if coord[1] < self._center_lon:
             x *= -1
