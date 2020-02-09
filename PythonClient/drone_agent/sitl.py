@@ -67,7 +67,7 @@ class SITL:
             if datas[i][0] == self._leaderID:
                 leader_location = datas[i][1]
                 distance = localmap.distance3Dv(loc3d1=leader_location, loc3d2=path_list[self._path_index])
-                if distance < boundary:
+                if distance <= boundary:
                     self._path_index += 1
                 if self._path_index >= len(path_list):
                     self._path_index = 0
@@ -75,48 +75,57 @@ class SITL:
         return False
 
 if __name__ is '__main__':
-    control = SITL(droneIDs=['Drone1', 'Drone2', 'Drone3', 'Drone4', 'Drone5', 'Drone6', 'Drone7', 'Drone8', 'Drone9'], is_leader=[True, False, False, False, False, False, False, False, False], error=[[0, 0, 0], [2, 2, 0], [4, 0, 0], [2, -2, 0], [2, 0, 0], [4, -2, 0], [4, 2, 0], [0, -2, 0], [0, 2, 0]])
+    control = SITL(droneIDs=['Drone1', 'Drone2', 'Drone3'], is_leader=[True, False, False], error=[[0, 0, 0], [0, 2, 0], [0, -2, 0]])
     
     # start
     control.start()
 
     # set path list
-    path_list1 = [Vector(0, 100, -15), Vector(0, 200, -40), Vector(0, 300, -40)]
-    speed_list1 = [10, 10, 10]
-    path_list2 = [Vector(200, 300, -40)]
-    speed_list2 = [10]
-    path_list3 = [Vector(400, 300, -40)]
-    speed_list3 = [10]
-    path_list4 = [Vector(200, 0, -40), Vector(100, 0, -40), Vector(0, 0, -40)]
-    speed_list4 = [10, 10, 10]
-    check_boundary = 2
-    mission_boundary = [1]
+    path_list1 = [Vector(50, 0, -3)]
+    speed_list1 = [1]
+    path_list2 = [Vector(0, 0, -3)]
+    speed_list2 = [1]
+    path_list3 = [Vector(50, 0, -3)]
+    speed_list3 = [1]
+    path_list4 = [Vector(20, 0, -3)]
+    speed_list4 = [1]
+    check_boundary = 3
     flocking_boundary = [25]
 
     # control test
     control.send_command('takeoff')
+    # weights
+    # collision avoidance, velocity matching, flocking center
     
     datas = control.send_command('collect_data')
     control.send_command('set_global_path', [path_list1, speed_list1])
-    while not control.mission_complete(datas, path_list1, boundary=3):
+    while not control.mission_complete(datas, path_list1, boundary=check_boundary):
         control.send_command('flocking_flight', data=[[1.5, 1, 1], check_boundary])
         control.broking()
         datas = control.send_command('collect_data')
+        print(datas)
+        print('loop1')
     control.send_command('set_global_path', [path_list2, speed_list2])
-    while not control.mission_complete(datas, path_list2, boundary=3):
-        control.send_command('formation_flight', data=[[1, 1, 5], check_boundary, 'column'])
-        control.broking()
-        datas = control.send_command('collect_data')
-    control.send_command('set_global_path', [path_list3, speed_list3])
-    while not control.mission_complete(datas, path_list3, boundary=3):
+    while not control.mission_complete(datas, path_list2, boundary=check_boundary):
         control.send_command('formation_flight', data=[[1, 1, 5], check_boundary, 'line'])
         control.broking()
         datas = control.send_command('collect_data')
+        print(datas)
+        print('loop2')
+    control.send_command('set_global_path', [path_list3, speed_list3])
+    while not control.mission_complete(datas, path_list3, boundary=check_boundary):
+        control.send_command('formation_flight', data=[[1, 1, 5], check_boundary, 'column'])
+        control.broking()
+        datas = control.send_command('collect_data')
+        print(datas)
+        print('loop3')
     control.send_command('set_global_path', [path_list4, speed_list4])
-    while not control.mission_complete(datas, path_list4, boundary=3):
+    while not control.mission_complete(datas, path_list4, boundary=check_boundary):
         control.send_command('flocking_flight', data=[[1.5, 1, 1], check_boundary])
         control.broking()
         datas = control.send_command('collect_data')
+        print(datas)
+        print('loop4')
 
     control.send_command('land')
 
