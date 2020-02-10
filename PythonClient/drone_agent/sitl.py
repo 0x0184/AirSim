@@ -107,14 +107,14 @@ if __name__ is '__main__':
         print('loop1')
     control.send_command('set_global_path', [path_list2, speed_list2])
     while not control.mission_complete(datas, path_list2, boundary=check_boundary):
-        control.send_command('formation_flight', data=[[1, 1, 5], check_boundary, 'line'])
+        control.send_command('formation_flight', data=[[1.5, 1, 5], check_boundary, 'line'])
         control.broking()
         datas = control.send_command('collect_data')
         print(datas)
         print('loop2')
     control.send_command('set_global_path', [path_list3, speed_list3])
     while not control.mission_complete(datas, path_list3, boundary=check_boundary):
-        control.send_command('formation_flight', data=[[1, 1, 5], check_boundary, 'column'])
+        control.send_command('formation_flight', data=[[1.5, 1, 5], check_boundary, 'column'])
         control.broking()
         datas = control.send_command('collect_data')
         print(datas)
